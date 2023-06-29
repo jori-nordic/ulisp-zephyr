@@ -24,6 +24,7 @@ const char LispLibrary[] PROGMEM = "";
 
 // Zephyr includes
 #include <zephyr/kernel.h>
+#include <strings.h>		/* for strcasecmp */
 // Includes
 
 // #include "LispLibrary.h"
@@ -54,7 +55,7 @@ const char LispLibrary[] PROGMEM = "";
 
 // Constants
 
-const int TRACEMAX = 3; // Number of traced functions
+#define TRACEMAX 3 // Number of traced functions
 
 // Stream names used by printobject
 const char serialstream[] PROGMEM = "serial";
@@ -2213,8 +2214,8 @@ uint32_t ipstring(object *form)
 	union {
 		uint32_t ipaddress;
 		uint8_t ipbytes[4];
-	};
-	ipaddress = 0;
+	} ip;
+	ip.ipaddress = 0;
 	while (form != NULL) {
 		int chars = form->integer;
 		for (int i = (sizeof(int) - 1) * 8; i >= 0; i = i - 8) {
@@ -2225,12 +2226,12 @@ uint32_t ipstring(object *form)
 					if (p > 3)
 						error2(PSTR("illegal IP address"));
 				} else
-					ipbytes[p] = (ipbytes[p] * 10) + ch - '0';
+					ip.ipbytes[p] = (ip.ipbytes[p] * 10) + ch - '0';
 			}
 		}
 		form = car(form);
 	}
-	return ipaddress;
+	return ip.ipaddress;
 }
 
 // Lookup variable in environment
@@ -8451,22 +8452,22 @@ extern uint32_t ENDSTACK; // Bottom of stack
 */
 object *eval(object *form, object *env)
 {
-#ifdef CPU_NRF52840
-	register int *sp asm("r13");
-#endif
+/* #ifdef CPU_NRF52840 */
+/* 	register int *sp asm("r13"); */
+/* #endif */
 
-#ifdef CPU_NATIVEPOSIX
-	register int *sp asm("sp");
-#endif
+/* #ifdef CPU_NATIVEPOSIX */
+/* 	register int *sp asm("sp"); */
+/* #endif */
 
 	int TC = 0;
 EVAL:
 	// Enough space?
 	// Serialprintln((uint32_t)sp - (uint32_t)&ENDSTACK); // Find best STACKDIFF value
-	if (((uint32_t)sp - (uint32_t)&ENDSTACK) < STACKDIFF) {
-		Context = NIL;
-		error2(PSTR("stack overflow"));
-	}
+	/* if (((uint32_t)sp - (uint32_t)&ENDSTACK) < STACKDIFF) { */
+	/* 	Context = NIL; */
+	/* 	error2(PSTR("stack overflow")); */
+	/* } */
 	if (Freespace <= WORKSPACESIZE >> 4)
 		gc(form, env); // GC when 1/16 of workspace left
 	// Escape
@@ -9074,7 +9075,7 @@ void loadfromlibrary(object *env)
 // For line editor
 const int TerminalWidth = 80;
 volatile int WritePtr = 0, ReadPtr = 0;
-const int KybdBufSize = 333; // 42*8 - 3
+#define KybdBufSize 333 // 42*8 - 3
 char KybdBuf[KybdBufSize];
 volatile uint8_t KybdAvailable = 0;
 

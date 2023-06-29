@@ -21,7 +21,7 @@ enum pinModes {
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <cstring>
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <math.h>
 
@@ -119,11 +119,13 @@ typedef bool boolean;
 
 typedef uint32_t symbol_t;
 
+struct sobject;
+
 typedef struct sobject {
 	union {
 		struct {
-			sobject *car;
-			sobject *cdr;
+			struct sobject *car;
+			struct sobject *cdr;
 		};
 		struct {
 			unsigned int type;
@@ -153,7 +155,7 @@ typedef void (*pfun_t)(char);
 
 typedef uint16_t builtin_t;
 
-enum builtins : builtin_t {
+enum builtins {
 	NIL,
 	TEE,
 	NOTHING,
@@ -373,9 +375,9 @@ void FSWrite32(File file, uint32_t data);
 uint32_t FSRead32(File file);
 void FlashBusy();
 
-inline void FlashWrite(uint8_t data);
+/* inline void FlashWrite(uint8_t data); */
 
-inline uint8_t FlashReadByte();
+/* inline uint8_t FlashReadByte(); */
 
 void FlashWriteByte(uint32_t *addr, uint8_t data);
 
@@ -387,33 +389,19 @@ void FlashBeginWrite(uint32_t *addr, uint32_t bytes);
 
 void FlashWrite32(uint32_t *addr, uint32_t data);
 
-inline void FlashEndWrite(uint32_t *addr);
+/* inline void FlashEndWrite(uint32_t *addr); */
 
 void FlashBeginRead(uint32_t *addr);
 
 uint32_t FlashRead32(uint32_t *addr);
 
-inline void FlashEndRead(uint32_t *addr);
+/* inline void FlashEndRead(uint32_t *addr); */
 
 void row_erase(const volatile void *addr);
 
 void page_clear();
 
 void page_write();
-
-bool FlashCheck();
-
-void FlashBeginWrite(uint32_t *addr, uint32_t bytes);
-
-void FlashWrite32(uint32_t *addr, uint32_t data);
-
-void FlashEndWrite(uint32_t *addr);
-
-void FlashBeginRead(uint32_t *addr);
-
-uint32_t FlashRead32(uint32_t *addr);
-
-void FlashEndRead(uint32_t *addr);
 
 int saveimage(object *arg);
 
