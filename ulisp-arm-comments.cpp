@@ -4,6 +4,8 @@
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
 
+#define PROGMEM
+
 // Lisp Library
 const char LispLibrary[] PROGMEM = "";
 
@@ -20,12 +22,14 @@ const char LispLibrary[] PROGMEM = "";
 // #define vt100
 // #define extensions
 
+// Zephyr includes
+#include <zephyr/kernel.h>
 // Includes
 
 // #include "LispLibrary.h"
 #include <setjmp.h>
-#include <SPI.h>
-#include <Wire.h>
+// #include <SPI.h>
+// #include <Wire.h>
 #include <limits.h>
 
 #if defined(sdcardsupport)
@@ -42,185 +46,11 @@ const char LispLibrary[] PROGMEM = "";
 #define RAMFUNC     __attribute__((section(".ramfunctions")))
 #define MEMBANK
 
-#if defined(ARDUINO_GEMMA_M0) || defined(ARDUINO_SEEED_XIAO_M0) || defined(ARDUINO_QTPY_M0)
-#define WORKSPACESIZE (2816 - SDSIZE) /* Objects (8*bytes) */
-#define EEPROMFLASH
-#define FLASHSIZE 32768 /* Bytes */
-#define CODESIZE  128   /* Bytes */
-#define STACKDIFF 320
-#define CPU_ATSAMD21
-
-#elif defined(ARDUINO_ITSYBITSY_M0) || defined(ARDUINO_SAMD_FEATHER_M0_EXPRESS)
-#define WORKSPACESIZE (2816 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE     2048000 /* 2 MBytes */
-#define CODESIZE      128     /* Bytes */
-#define SDCARD_SS_PIN 4
-#define STACKDIFF     320
-#define CPU_ATSAMD21
-
-#elif defined(ADAFRUIT_FEATHER_M0)    /* Feather M0 without DataFlash */
-#define WORKSPACESIZE (2816 - SDSIZE) /* Objects (8*bytes) */
-#define EEPROMFLASH
-#define FLASHSIZE     32768 /* Bytes */
-#define CODESIZE      128   /* Bytes */
-#define SDCARD_SS_PIN 4
-#define STACKDIFF     320
-#define CPU_ATSAMD21
-
-#elif defined(ARDUINO_METRO_M4) || defined(ARDUINO_ITSYBITSY_M4) || defined(ARDUINO_FEATHER_M4)
-#define WORKSPACESIZE (20608 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE     2048000 /* 2 MBytes */
-#define CODESIZE      256     /* Bytes */
-#define SDCARD_SS_PIN 10
-#define STACKDIFF     400
-#define CPU_ATSAMD51
-
-#elif defined(ARDUINO_PYBADGE_M4) || defined(ARDUINO_PYGAMER_M4)
-#define WORKSPACESIZE (20608 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE     2048000 /* 2 MBytes */
-#define CODESIZE      256     /* Bytes */
-#define SDCARD_SS_PIN 10
-#define STACKDIFF     400
-#define CPU_ATSAMD51
-#if defined(gfxsupport)
-const int COLOR_WHITE = 0xffff, COLOR_BLACK = 0, TFT_BACKLIGHT = 47;
-#include <Adafruit_GFX.h>    // Core graphics library
-#include <Adafruit_ST7735.h> // Hardware-specific library for ST7735
-Adafruit_ST7735 tft = Adafruit_ST7735(44, 45, 41, 42, 46);
-#endif
-
-#elif defined(ARDUINO_WIO_TERMINAL)
-#define WORKSPACESIZE (20480 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE 2048000 /* 2 MBytes */
-#define CODESIZE  256     /* Bytes */
-#define STACKDIFF 400
-#define CPU_ATSAMD51
-#define EXTERNAL_FLASH_USE_QSPI
-#if defined(gfxsupport)
-const int COLOR_WHITE = 0xffff, COLOR_BLACK = 0;
-#include <TFT_eSPI.h> // Hardware-specific library
-TFT_eSPI tft = TFT_eSPI();
-#endif
-
-#elif defined(ARDUINO_GRAND_CENTRAL_M4)
-#define WORKSPACESIZE (28800 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE 8192000 /* 8 MBytes */
-#define CODESIZE  256     /* Bytes */
-#define STACKDIFF 400
-#define CPU_ATSAMD51
-
-#elif defined(ARDUINO_SAMD_MKRZERO)
-#define WORKSPACESIZE (2640 - SDSIZE) /* Objects (8*bytes) */
-#define EEPROMFLASH
-#define FLASHSIZE       32768 /* Bytes */
-#define SYMBOLTABLESIZE 512   /* Bytes */
-#define CODESIZE        128   /* Bytes */
-#define STACKDIFF       840
-#define CPU_ATSAMD21
-
-#elif defined(ARDUINO_SAMD_ZERO)      /* Put this last, otherwise overrides the Adafruit boards */
-#define WORKSPACESIZE (2640 - SDSIZE) /* Objects (8*bytes) */
-#define EEPROMFLASH
-#define FLASHSIZE     32768 /* Bytes */
-#define CODESIZE      128   /* Bytes */
-#define SDCARD_SS_PIN 10
-#define STACKDIFF     320
-#define CPU_ATSAMD21
-
-#elif defined(ARDUINO_BBC_MICROBIT) || defined(ARDUINO_SINOBIT)
-#define WORKSPACESIZE 1344 /* Objects (8*bytes) */
-#define CODESIZE      64   /* Bytes */
-#define STACKDIFF     320
-#define CPU_NRF51822
-
-#elif defined(ARDUINO_BBC_MICROBIT_V2)
-#define WORKSPACESIZE 12928 /* Objects (8*bytes) */
-#define CODESIZE      128   /* Bytes */
-#define STACKDIFF     320
-#define CPU_NRF52833
-
-#elif defined(ARDUINO_CALLIOPE_MINI)
-#define WORKSPACESIZE 3392 /* Objects (8*bytes) */
-#define CODESIZE      64   /* Bytes */
-#define STACKDIFF     320
-#define CPU_NRF51822
-
-#elif defined(ARDUINO_NRF52840_ITSYBITSY) || defined(ARDUINO_Seeed_XIAO_nRF52840) ||               \
-	defined(ARDUINO_Seeed_XIAO_nRF52840_Sense) || defined(ARDUINO_NRF52840_CIRCUITPLAY)
-#define WORKSPACESIZE (21120 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE 2048000 /* 2 MBytes */
-#define CODESIZE  256     /* Bytes */
+#define WORKSPACESIZE (21120-SDSIZE)    /* Objects (8*bytes) */
+// #define CODESIZE 256                    /* Bytes */
 #define STACKDIFF 8
-#define CPU_NRF52840
-
-#elif defined(ARDUINO_NRF52840_CLUE)
-#define WORKSPACESIZE (21120 - SDSIZE) /* Objects (8*bytes) */
-#define DATAFLASH
-#define FLASHSIZE 2048000 /* 2 MBytes */
-#define CODESIZE  256     /* Bytes */
-#define STACKDIFF 8
-#define CPU_NRF52840
-#if defined(gfxsupport)
-const int COLOR_WHITE = 0xffff, COLOR_BLACK = 0;
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
-Adafruit_ST7789 tft = Adafruit_ST7789(&SPI1, PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
-#endif
-
-#elif defined(MAX32620)
-#define WORKSPACESIZE   (24704 - SDSIZE) /* Objects (8*bytes) */
-#define SYMBOLTABLESIZE 1024             /* Bytes */
-#define CODESIZE        256              /* Bytes */
-#define STACKDIFF       320
-#define CPU_MAX32620
-#define Wire1 Wire2
-
-#elif defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41)
-#define WORKSPACESIZE 60000 /* Objects (8*bytes) */
-#define LITTLEFS      (960 * 1024)
-#include <LittleFS.h>
-LittleFS_Program LittleFS;
-#define CODESIZE  256 /* Bytes */
-#define STACKDIFF 15000
-#define CPU_iMXRT1062
-#define SDCARD_SS_PIN BUILTIN_SDCARD
-#define BitOrder      uint8_t
-#undef RAMFUNC
-#define RAMFUNC FASTRUN
-#undef MEMBANK
-#define MEMBANK DMAMEM
-
-#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_ADAFRUIT_QTPY_RP2040) ||               \
-	defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) || defined(ARDUINO_SEEED_XIAO_RP2040)
-#define WORKSPACESIZE (22912 - SDSIZE) /* Objects (8*bytes) */
-#define LITTLEFS
-#include <LittleFS.h>
-#define FILE_WRITE_BEGIN "w"
-#define FILE_READ        "r"
-#define CODESIZE         256 /* Bytes */
-#define STACKDIFF        320
-#define CPU_RP2040
-
-#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
-#define WORKSPACESIZE (15536 - SDSIZE) /* Objects (8*bytes) */
-#define LITTLEFS
-#include <WiFi.h>
-#include <LittleFS.h>
-#define FILE_WRITE_BEGIN "w"
-#define FILE_READ        "r"
-#define CODESIZE         256 /* Bytes */
-#define STACKDIFF        320
-#define CPU_RP2040
-
-#else
-#error "Board not supported!"
-#endif
+// #define CPU_NRF52840
+#define CPU_NATIVEPOSIX
 
 // C Macros
 
@@ -2929,74 +2759,11 @@ void I2Cstop(TwoWire *port, uint8_t read)
 
 // Streams
 
-// Simplify board differences
-#if defined(ARDUINO_NRF52840_CLUE) || defined(ARDUINO_GRAND_CENTRAL_M4) ||                         \
-	defined(ARDUINO_PYBADGE_M4) || defined(ARDUINO_PYGAMER_M4) || defined(ARDUINO_TEENSY40) || \
-	defined(ARDUINO_TEENSY41) || defined(ARDUINO_RASPBERRY_PI_PICO) ||                         \
-	defined(ARDUINO_RASPBERRY_PI_PICO_W)
-#define ULISP_SPI1
-#endif
-#if defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_BBC_MICROBIT_V2) ||                           \
-	defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41) || defined(MAX32620) ||             \
-	defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W) ||              \
-	defined(ARDUINO_ADAFRUIT_QTPY_RP2040) || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040)
-#define ULISP_I2C1
-#endif
-#if defined(ARDUINO_SAM_DUE) || defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41)
-#define ULISP_SERIAL3
-#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
-#define ULISP_SERIAL2
-#elif !defined(CPU_NRF51822) && !defined(CPU_NRF52833) && !defined(ARDUINO_FEATHER_F405)
-#define ULISP_SERIAL1
-#endif
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-#define ULISP_WIFI
-#endif
+// inline int spiread () { return SPI.transfer(0); }
+inline int spiread () { return 0; }
+// inline int i2cread () { return I2Cread(&Wire); }
+inline int i2cread () { return 0; }
 
-inline int spiread()
-{
-	return SPI.transfer(0);
-}
-#if defined(ULISP_SPI1)
-inline int spi1read()
-{
-	return SPI1.transfer(0);
-}
-#endif
-inline int i2cread()
-{
-	return I2Cread(&Wire);
-}
-#if defined(ULISP_I2C1)
-inline int i2c1read()
-{
-	return I2Cread(&Wire1);
-}
-#endif
-#if defined(ULISP_SERIAL3)
-inline int serial3read()
-{
-	while (!Serial3.available())
-		testescape();
-	return Serial3.read();
-}
-#endif
-#if defined(ULISP_SERIAL3) || defined(ULISP_SERIAL2)
-inline int serial2read()
-{
-	while (!Serial2.available())
-		testescape();
-	return Serial2.read();
-}
-#endif
-#if defined(ULISP_SERIAL3) || defined(ULISP_SERIAL2) || defined(ULISP_SERIAL1)
-inline int serial1read()
-{
-	while (!Serial1.available())
-		testescape();
-	return Serial1.read();
-}
-#endif
 #if defined(sdcardsupport)
 File SDpfile, SDgfile;
 inline int SDread()
@@ -3010,79 +2777,13 @@ inline int SDread()
 }
 #endif
 
-#if defined(ULISP_WIFI)
-WiFiClient client;
-WiFiServer server(80);
-
-inline int WiFiread()
-{
-	if (LastChar) {
-		char temp = LastChar;
-		LastChar = 0;
-		return temp;
-	}
-	return client.read();
-}
-#endif
-
-void serialbegin(int address, int baud)
-{
-#if defined(ULISP_SERIAL3)
-	if (address == 1)
-		Serial1.begin((long)baud * 100);
-	else if (address == 2)
-		Serial2.begin((long)baud * 100);
-	else if (address == 3)
-		Serial3.begin((long)baud * 100);
-#elif defined(ULISP_SERIAL2)
-	if (address == 1)
-		Serial1.begin((long)baud * 100);
-	else if (address == 2)
-		Serial2.begin((long)baud * 100);
-#elif defined(ULISP_SERIAL1)
-	if (address == 1)
-		Serial1.begin((long)baud * 100);
-#else
-	(void)baud;
-	if (false)
-		;
-#endif
-	else
-		error(PSTR("port not supported"), number(address));
+void serialbegin (int address, int baud) {
+	// address == peripheral instance
+	return;
 }
 
-void serialend(int address)
-{
-#if defined(ULISP_SERIAL3)
-	if (address == 1) {
-		Serial1.flush();
-		Serial1.end();
-	} else if (address == 2) {
-		Serial2.flush();
-		Serial2.end();
-	} else if (address == 3) {
-		Serial3.flush();
-		Serial3.end();
-	}
-#elif defined(ULISP_SERIAL2)
-	if (address == 1) {
-		Serial1.flush();
-		Serial1.end();
-	} else if (address == 2) {
-		Serial2.flush();
-		Serial2.end();
-	}
-#elif defined(ULISP_SERIAL1)
-	if (address == 1) {
-		Serial1.flush();
-		Serial1.end();
-	}
-#else
-	if (false)
-		;
-#endif
-	else
-		error(PSTR("port not supported"), number(address));
+void serialend (int address) {
+	return;
 }
 
 gfun_t gstreamfun(object *args)
@@ -3098,44 +2799,16 @@ gfun_t gstreamfun(object *args)
 	if (streamtype == I2CSTREAM) {
 		if (address < 128)
 			gfun = i2cread;
-#if defined(ULISP_I2C1)
-		else
-			gfun = i2c1read;
-#endif
 	} else if (streamtype == SPISTREAM) {
 		if (address < 128)
 			gfun = spiread;
-#if defined(ULISP_SPI1)
-		else
-			gfun = spi1read;
-#endif
 	} else if (streamtype == SERIALSTREAM) {
 		if (address == 0)
 			gfun = gserial;
-#if defined(ULISP_SERIAL3)
-		else if (address == 1)
-			gfun = serial1read;
-		else if (address == 2)
-			gfun = serial2read;
-		else if (address == 3)
-			gfun = serial3read;
-#elif defined(ULISP_SERIAL2)
-		else if (address == 1)
-			gfun = serial1read;
-		else if (address == 2)
-			gfun = serial2read;
-#elif defined(ULISP_SERIAL1)
-		else if (address == 1)
-			gfun = serial1read;
-#endif
 	}
 #if defined(sdcardsupport)
 	else if (streamtype == SDSTREAM)
 		gfun = (gfun_t)SDread;
-#endif
-#if defined(ULISP_WIFI)
-	else if (streamtype == WIFISTREAM)
-		gfun = (gfun_t)WiFiread;
 #endif
 	else
 		error2(PSTR("unknown stream type"));
@@ -3146,60 +2819,14 @@ inline void spiwrite(char c)
 {
 	SPI.transfer(c);
 }
-#if defined(ULISP_SPI1)
-inline void spi1write(char c)
-{
-	SPI1.transfer(c);
-}
-#endif
 inline void i2cwrite(char c)
 {
 	I2Cwrite(&Wire, c);
 }
-#if defined(ULISP_I2C1)
-inline void i2c1write(char c)
-{
-	I2Cwrite(&Wire1, c);
-}
-#endif
-#if defined(ULISP_SERIAL3)
-inline void serial1write(char c)
-{
-	Serial1.write(c);
-}
-inline void serial2write(char c)
-{
-	Serial2.write(c);
-}
-inline void serial3write(char c)
-{
-	Serial3.write(c);
-}
-#elif defined(ULISP_SERIAL2)
-inline void serial2write(char c)
-{
-	Serial2.write(c);
-}
-inline void serial1write(char c)
-{
-	Serial1.write(c);
-}
-#elif defined(ULISP_SERIAL1)
-inline void serial1write(char c)
-{
-	Serial1.write(c);
-}
-#endif
 #if defined(sdcardsupport)
 inline void SDwrite(char c)
 {
 	SDpfile.write(c);
-}
-#endif
-#if defined(ULISP_WIFI)
-inline void WiFiwrite(char c)
-{
-	client.write(c);
 }
 #endif
 #if defined(gfxsupport)
@@ -3222,36 +2849,12 @@ pfun_t pstreamfun(object *args)
 	if (streamtype == I2CSTREAM) {
 		if (address < 128)
 			pfun = i2cwrite;
-#if defined(ULISP_I2C1)
-		else
-			pfun = i2c1write;
-#endif
 	} else if (streamtype == SPISTREAM) {
 		if (address < 128)
 			pfun = spiwrite;
-#if defined(ULISP_SPI1)
-		else
-			pfun = spi1write;
-#endif
 	} else if (streamtype == SERIALSTREAM) {
 		if (address == 0)
 			pfun = pserial;
-#if defined(ULISP_SERIAL3)
-		else if (address == 1)
-			pfun = serial1write;
-		else if (address == 2)
-			pfun = serial2write;
-		else if (address == 3)
-			pfun = serial3write;
-#elif defined(ULISP_SERIAL2)
-		else if (address == 1)
-			pfun = serial1write;
-		else if (address == 2)
-			pfun = serial2write;
-#elif defined(ULISP_SERIAL1)
-		else if (address == 1)
-			pfun = serial1write;
-#endif
 	} else if (streamtype == STRINGSTREAM) {
 		pfun = pstr;
 	}
@@ -3263,10 +2866,6 @@ pfun_t pstreamfun(object *args)
 	else if (streamtype == GFXSTREAM)
 		pfun = (pfun_t)gfxwrite;
 #endif
-#if defined(ULISP_WIFI)
-	else if (streamtype == WIFISTREAM)
-		pfun = (pfun_t)WiFiwrite;
-#endif
 	else
 		error2(PSTR("unknown stream type"));
 	return pfun;
@@ -3276,174 +2875,14 @@ pfun_t pstreamfun(object *args)
 
 void checkanalogread(int pin)
 {
-#if defined(ARDUINO_SAM_DUE)
-	if (!(pin >= 54 && pin <= 65))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SAMD_ZERO)
-	if (!(pin >= 14 && pin <= 19))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SAMD_MKRZERO)
-	if (!(pin >= 15 && pin <= 21))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_ITSYBITSY_M0)
-	if (!(pin >= 14 && pin <= 25))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NEOTRINKEY_M0)
-	if (!(pin == 1 || pin == 2 || pin == 6))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_GEMMA_M0)
-	if (!(pin >= 8 && pin <= 10))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_QTPY_M0)
-	if (!((pin >= 0 && pin <= 3) || (pin >= 6 && pin <= 10)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SEEED_XIAO_M0)
-	if (!(pin >= 0 && pin <= 10))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_METRO_M4)
-	if (!(pin >= 14 && pin <= 21))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_ITSYBITSY_M4) || defined(ARDUINO_FEATHER_M4)
-	if (!(pin >= 14 && pin <= 20))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_PYBADGE_M4)
-	if (!(pin >= 14 && pin <= 23))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_PYGAMER_M4)
-	if (!(pin >= 14 && pin <= 25))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_WIO_TERMINAL)
-	if (!((pin >= 0 && pin <= 8)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_GRAND_CENTRAL_M4)
-	if (!((pin >= 67 && pin <= 74) || (pin >= 54 && pin <= 61)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_BBC_MICROBIT) || defined(ARDUINO_SINOBIT)
-	if (!((pin >= 0 && pin <= 4) || pin == 10))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_BBC_MICROBIT_V2)
-	if (!((pin >= 0 && pin <= 4) || pin == 10 || pin == 29))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_CALLIOPE_MINI)
-	if (!(pin == 1 || pin == 2 || (pin >= 4 && pin <= 6) || pin == 21))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_ITSYBITSY)
-	if (!(pin >= 14 && pin <= 20))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_Seeed_XIAO_nRF52840) || defined(ARDUINO_Seeed_XIAO_nRF52840_Sense)
-	if (!(pin >= 0 && pin <= 5))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_CLUE)
-	if (!((pin >= 0 && pin <= 4) || pin == 10 || pin == 12 || pin == 16))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_CIRCUITPLAY)
-	if (!(pin == 0 || (pin >= 2 && pin <= 3) || pin == 6 || (pin >= 9 && pin <= 10) ||
-	      (pin >= 22 && pin <= 23)))
-		error(invalidpin, number(pin));
-#elif defined(MAX32620)
-	if (!(pin >= 49 && pin <= 52))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_TEENSY40)
-	if (!((pin >= 14 && pin <= 27)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_TEENSY41)
-	if (!((pin >= 14 && pin <= 27) || (pin >= 38 && pin <= 41)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W) ||                \
-	defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) || defined(ARDUINO_ADAFRUIT_QTPY_RP2040) ||       \
-	defined(ARDUINO_SEEED_XIAO_RP2040)
-	if (!(pin >= 26 && pin <= 29))
-		error(invalidpin, number(pin));
-#endif
+	// FIXME: analog read not supported right now
+	error(invalidpin, number(pin));
 }
 
 void checkanalogwrite(int pin)
 {
-#if defined(ARDUINO_SAM_DUE)
-	if (!((pin >= 2 && pin <= 13) || pin == 66 || pin == 67))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SAMD_ZERO)
-	if (!((pin >= 3 && pin <= 6) || (pin >= 8 && pin <= 13) || pin == 14))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SAMD_MKRZERO)
-	if (!((pin >= 0 && pin <= 8) || pin == 10 || pin == 18 || pin == 19))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_ITSYBITSY_M0)
-	if (!((pin >= 3 && pin <= 6) || (pin >= 8 && pin <= 13) || (pin >= 15 && pin <= 16) ||
-	      (pin >= 22 && pin <= 25)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NEOTRINKEY_M0)
-	error2(PSTR("not supported"));
-#elif defined(ARDUINO_GEMMA_M0)
-	if (!(pin == 0 || pin == 2 || pin == 9 || pin == 10))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_QTPY_M0)
-	if (!(pin == 0 || (pin >= 2 && pin <= 10)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_SEEED_XIAO_M0)
-	if (!(pin >= 0 && pin <= 10))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_METRO_M4)
-	if (!(pin >= 0 && pin <= 15))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_ITSYBITSY_M4)
-	if (!(pin == 0 || pin == 1 || pin == 4 || pin == 5 || pin == 7 || (pin >= 9 && pin <= 15) ||
-	      pin == 21 || pin == 22))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_FEATHER_M4)
-	if (!(pin == 0 || pin == 1 || (pin >= 4 && pin <= 6) || (pin >= 9 && pin <= 13) ||
-	      pin == 14 || pin == 15 || pin == 17 || pin == 21 || pin == 22))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_PYBADGE_M4)
-	if (!(pin == 4 || pin == 7 || pin == 9 || (pin >= 12 && pin <= 13) ||
-	      (pin >= 24 && pin <= 25) || (pin >= 46 && pin <= 47)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_PYGAMER_M4)
-	if (!(pin == 4 || pin == 7 || pin == 9 || (pin >= 12 && pin <= 13) ||
-	      (pin >= 26 && pin <= 27) || (pin >= 46 && pin <= 47)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_WIO_TERMINAL)
-	if (!((pin >= 0 && pin <= 2) || pin == 6 || pin == 8 || (pin >= 12 && pin <= 20) ||
-	      pin == 24))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_GRAND_CENTRAL_M4)
-	if (!((pin >= 2 && pin <= 9) || pin == 11 || (pin >= 13 && pin <= 45) || pin == 48 ||
-	      (pin >= 50 && pin <= 53) || pin == 58 || pin == 61 || pin == 68 || pin == 69))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_BBC_MICROBIT) || defined(ARDUINO_BBC_MICROBIT_V2) || defined(ARDUINO_SINOBIT)
-	if (!(pin >= 0 && pin <= 32))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_CALLIOPE_MINI)
-	if (!(pin >= 0 && pin <= 30))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_ITSYBITSY)
-	if (!(pin >= 0 && pin <= 25))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_CLUE)
-	if (!(pin >= 0 && pin <= 46))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_NRF52840_CIRCUITPLAY)
-	if (!(pin >= 0 && pin <= 35))
-		error(invalidpin, number(pin));
-#elif defined(MAX32620)
-	if (!((pin >= 20 && pin <= 29) || pin == 32 || (pin >= 40 && pin <= 48)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_TEENSY40)
-	if (!((pin >= 0 && pin <= 15) || (pin >= 18 && pin <= 19) || (pin >= 22 && pin <= 25) ||
-	      (pin >= 28 && pin <= 29) || (pin >= 33 && pin <= 39)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_TEENSY41)
-	if (!((pin >= 0 && pin <= 15) || (pin >= 18 && pin <= 19) || (pin >= 22 && pin <= 25) ||
-	      (pin >= 28 && pin <= 29) || pin == 33 || (pin >= 36 && pin <= 37)))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) ||            \
-	defined(ARDUINO_ADAFRUIT_QTPY_RP2040) || defined(ARDUINO_SEEED_XIAO_RP2040)
-	if (!(pin >= 0 && pin <= 29))
-		error(invalidpin, number(pin));
-#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
-	if (!((pin >= 0 && pin <= 29) || pin == 32))
-		error(invalidpin, number(pin));
-#endif
+	// FIXME: analog write not supported right now
+	error(invalidpin, number(pin));
 }
 
 // Note
@@ -3451,101 +2890,41 @@ void checkanalogwrite(int pin)
 const int scale[] PROGMEM = {4186, 4435, 4699, 4978, 5274, 5588,
 			     5920, 6272, 6645, 7040, 7459, 7902};
 
+void tone(uint32_t pin, uint32_t frequency)
+{
+	// FIXME: not implemented
+	return;
+}
+
+void noTone(uint32_t pin)
+{
+	// FIXME: not implemented
+	return;
+}
+
 void playnote(int pin, int note, int octave)
 {
-#if defined(ARDUINO_NRF52840_CLUE) || defined(ARDUINO_NRF52840_CIRCUITPLAY) ||                     \
-	defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W) ||              \
-	defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) || defined(ARDUINO_ADAFRUIT_QTPY_RP2040) ||       \
-	defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_SEEED_XIAO_RP2040)
 	int prescaler = 8 - octave - note / 12;
 	if (prescaler < 0 || prescaler > 8)
 		error(PSTR("octave out of range"), number(prescaler));
 	tone(pin, scale[note % 12] >> prescaler);
-#else
-	(void)pin, (void)note, (void)octave;
-#endif
 }
 
 void nonote(int pin)
 {
-#if defined(ARDUINO_NRF52840_CLUE) || defined(ARDUINO_NRF52840_CIRCUITPLAY) ||                     \
-	defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W) ||              \
-	defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) || defined(ARDUINO_ADAFRUIT_QTPY_RP2040) ||       \
-	defined(ARDUINO_WIO_TERMINAL) || defined(ARDUINO_SEEED_XIAO_RP2040)
 	noTone(pin);
-#else
-	(void)pin;
-#endif
 }
 
 // Sleep
 
-#if defined(CPU_ATSAMD21)
-void WDT_Handler(void)
-{
-	// ISR for watchdog early warning
-	WDT->CTRL.bit.ENABLE = 0; // Disable watchdog
-	while (WDT->STATUS.bit.SYNCBUSY)
-		;                // Sync CTRL write
-	WDT->INTFLAG.bit.EW = 1; // Clear interrupt flag
-}
-#endif
-
 void initsleep()
 {
-#if defined(CPU_ATSAMD21)
-	// One-time initialization of watchdog timer.
-
-	// Generic clock generator 2, divisor = 32 (2^(DIV+1))
-	GCLK->GENDIV.reg = GCLK_GENDIV_ID(2) | GCLK_GENDIV_DIV(4);
-	// Enable clock generator 2 using low-power 32KHz oscillator.
-	// With /32 divisor above, this yields 1024Hz clock.
-	GCLK->GENCTRL.reg = GCLK_GENCTRL_ID(2) | GCLK_GENCTRL_GENEN | GCLK_GENCTRL_SRC_OSCULP32K |
-			    GCLK_GENCTRL_DIVSEL;
-	while (GCLK->STATUS.bit.SYNCBUSY)
-		;
-	// WDT clock = clock gen 2
-	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID_WDT | GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK2;
-
-	// Enable WDT early-warning interrupt
-	NVIC_DisableIRQ(WDT_IRQn);
-	NVIC_ClearPendingIRQ(WDT_IRQn);
-	NVIC_SetPriority(WDT_IRQn, 0); // Top priority
-	NVIC_EnableIRQ(WDT_IRQn);
-#endif
+	// TODO: do we need to do anything here? power mgmt maybe?
 }
 
 void doze(int secs)
 {
-#if defined(CPU_ATSAMD21)
-	WDT->CTRL.reg = 0; // Disable watchdog for config
-	while (WDT->STATUS.bit.SYNCBUSY)
-		;
-	WDT->INTENSET.bit.EW = 1;     // Enable early warning interrupt
-	WDT->CONFIG.bit.PER = 0xB;    // Period = max
-	WDT->CONFIG.bit.WINDOW = 0x7; // Set time of interrupt = 1024 cycles = 1 sec
-	WDT->CTRL.bit.WEN = 1;        // Enable window mode
-	while (WDT->STATUS.bit.SYNCBUSY)
-		; // Sync CTRL write
-
-	SysTick->CTRL = 0; // Stop SysTick interrupts
-
-	while (secs > 0) {
-		WDT->CLEAR.reg = WDT_CLEAR_CLEAR_KEY; // Clear watchdog interval
-		while (WDT->STATUS.bit.SYNCBUSY)
-			;
-		WDT->CTRL.bit.ENABLE = 1; // Start watchdog now!
-		while (WDT->STATUS.bit.SYNCBUSY)
-			;
-		SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; // Deepest sleep
-		__DSB();
-		__WFI(); // Wait for interrupt
-		secs--;
-	}
-	SysTick->CTRL = 7; // Restart SysTick interrupts
-#else
-	delay(1000 * secs);
-#endif
+	k_sleep(K_SECONDS(secs));
 }
 
 // Prettyprint
@@ -4316,6 +3695,8 @@ object *sp_withserial(object *args, object *env)
 */
 object *sp_withi2c(object *args, object *env)
 {
+#if 0
+	// FIXME: implement
 	object *params = checkarguments(args, 2, 4);
 	object *var = first(params);
 	int address = checkinteger(eval(second(params), env));
@@ -4334,10 +3715,6 @@ object *sp_withi2c(object *args, object *env)
 	}
 	// Top bit of address is I2C port
 	TwoWire *port = &Wire;
-#if defined(ULISP_I2C1)
-	if (address > 127)
-		port = &Wire1;
-#endif
 	I2Cinit(port, 1); // Pullups
 	object *pair = cons(var, (I2Cstart(port, address & 0x7F, read)) ? stream(I2CSTREAM, address)
 									: nil);
@@ -4346,6 +3723,10 @@ object *sp_withi2c(object *args, object *env)
 	object *result = eval(tf_progn(forms, env), env);
 	I2Cstop(port, read);
 	return result;
+#endif
+	(void)args, (void)env;
+	error2(PSTR("not supported"));
+	return nil;
 }
 
 /*
@@ -4357,6 +3738,8 @@ object *sp_withi2c(object *args, object *env)
 */
 object *sp_withspi(object *args, object *env)
 {
+#if 0
+	// FIXME: implement
 	object *params = checkarguments(args, 2, 6);
 	object *var = first(params);
 	params = cdr(params);
@@ -4391,12 +3774,6 @@ object *sp_withspi(object *args, object *env)
 	object *pair = cons(var, stream(SPISTREAM, pin + 128 * address));
 	push(pair, env);
 	SPIClass *spiClass = &SPI;
-#if defined(ARDUINO_NRF52840_CLUE) || defined(ARDUINO_GRAND_CENTRAL_M4) ||                         \
-	defined(ARDUINO_PYBADGE_M4) || defined(ARDUINO_PYGAMER_M4) || defined(ARDUINO_TEENSY40) || \
-	defined(ARDUINO_TEENSY41)
-	if (address == 1)
-		spiClass = &SPI1;
-#endif
 	spiClass->begin();
 	spiClass->beginTransaction(SPISettings(((unsigned long)clock * 1000), bitorder, mode));
 	digitalWrite(pin, LOW);
@@ -4405,6 +3782,10 @@ object *sp_withspi(object *args, object *env)
 	digitalWrite(pin, HIGH);
 	spiClass->endTransaction();
 	return result;
+#endif
+	(void)args, (void)env;
+	error2(PSTR("not supported"));
+	return nil;
 }
 
 /*
@@ -6641,10 +6022,6 @@ object *fn_restarti2c(object *args, object *env)
 	TwoWire *port;
 	if (address < 128)
 		port = &Wire;
-#if defined(ULISP_I2C1)
-	else
-		port = &Wire1;
-#endif
 	return I2Crestart(port, address & 0x7F, read) ? tee : nil;
 }
 
@@ -6713,6 +6090,42 @@ object *fn_cls(object *args, object *env)
 
 // Arduino procedures
 
+void pinMode(uint32_t pin, uint32_t mode)
+{
+	// FIXME: implement
+	return;
+}
+
+uint32_t digitalRead(uint32_t pin)
+{
+	// FIXME: implement
+	return 0;
+}
+
+void digitalWrite(uint32_t pin, uint32_t value)
+{
+	// FIXME: implement
+	return;
+}
+
+uint32_t analogRead(uint32_t pin)
+{
+	// FIXME: implement
+	return 0;
+}
+
+void analogWrite(uint32_t pin, uint32_t value)
+{
+	// FIXME: implement
+	return;
+}
+
+void analogWriteResolution(uint32_t bits)
+{
+	// FIXME: implement
+	return;
+}
+
 /*
   (pinmode pin mode)
   Sets the input/output mode of an Arduino pin number, and returns nil.
@@ -6737,10 +6150,8 @@ object *fn_pinmode(object *args, object *env)
 			pm = OUTPUT;
 		else if (mode == 2)
 			pm = INPUT_PULLUP;
-#if defined(INPUT_PULLDOWN)
 		else if (mode == 4)
 			pm = INPUT_PULLDOWN;
-#endif
 	} else if (arg != nil)
 		pm = OUTPUT;
 	pinMode(pin, pm);
@@ -6817,13 +6228,9 @@ object *fn_analogreference(object *args, object *env)
 {
 	(void)env;
 	object *arg = first(args);
-#if defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41) || defined(MAX32620) ||                 \
-	defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_RASPBERRY_PI_PICO_W) ||              \
-	defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) || defined(ARDUINO_ADAFRUIT_QTPY_RP2040)
+	// FIXME: add support
 	error2(PSTR("not supported"));
-#else
-	analogReference((eAnalogReference)checkkeyword(arg));
-#endif
+	// analogReference((eAnalogReference)checkkeyword(arg));
 	return arg;
 }
 
@@ -6836,12 +6243,9 @@ object *fn_analogreadresolution(object *args, object *env)
 {
 	(void)env;
 	object *arg = first(args);
-#if defined(ARDUINO_RASPBERRY_PI_PICO) || defined(ARDUINO_ADAFRUIT_FEATHER_RP2040) ||              \
-	defined(ARDUINO_ADAFRUIT_QTPY_RP2040)
+	// FIXME: add support
 	error2(PSTR("not supported"));
-#else
-	analogReadResolution(checkinteger(arg));
-#endif
+	// analogReadResolution(checkinteger(arg));
 	return arg;
 }
 
@@ -6884,7 +6288,7 @@ object *fn_delay(object *args, object *env)
 {
 	(void)env;
 	object *arg1 = first(args);
-	delay(checkinteger(arg1));
+	k_msleep(checkinteger(arg1));
 	return arg1;
 }
 
@@ -6895,7 +6299,7 @@ object *fn_delay(object *args, object *env)
 object *fn_millis(object *args, object *env)
 {
 	(void)args, (void)env;
-	return number(millis());
+	return number(k_uptime_get());
 }
 
 /*
@@ -7378,43 +6782,9 @@ object *sp_error(object *args, object *env)
 */
 object *sp_withclient(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	object *params = checkarguments(args, 1, 3);
-	object *var = first(params);
-	char buffer[BUFFERSIZE];
-	params = cdr(params);
-	int n;
-	if (params == NULL) {
-		client = server.available();
-		if (!client)
-			return nil;
-		n = 2;
-	} else {
-		object *address = eval(first(params), env);
-		object *port = eval(second(params), env);
-		int success;
-		if (stringp(address))
-			success = client.connect(cstring(address, buffer, BUFFERSIZE),
-						 checkinteger(port));
-		else if (integerp(address))
-			success = client.connect(address->integer, checkinteger(port));
-		else
-			error2(PSTR("invalid address"));
-		if (!success)
-			return nil;
-		n = 1;
-	}
-	object *pair = cons(var, stream(WIFISTREAM, n));
-	push(pair, env);
-	object *forms = cdr(args);
-	object *result = eval(tf_progn(forms, env), env);
-	client.stop();
-	return result;
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7424,16 +6794,9 @@ object *sp_withclient(object *args, object *env)
 */
 object *fn_available(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)env;
-	if (isstream(first(args)) >> 8 != WIFISTREAM)
-		error2(PSTR("invalid stream"));
-	return number(client.available());
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7442,15 +6805,9 @@ object *fn_available(object *args, object *env)
 */
 object *fn_wifiserver(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)args, (void)env;
-	server.begin();
-	return nil;
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7460,29 +6817,9 @@ object *fn_wifiserver(object *args, object *env)
 */
 object *fn_wifisoftap(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)env;
-	char ssid[33], pass[65];
-	object *first = first(args);
-	args = cdr(args);
-	if (args == NULL)
-		WiFi.beginAP(cstring(first, ssid, 33));
-	else {
-		object *second = first(args);
-		args = cdr(args);
-		int channel = 1;
-		if (args != NULL) {
-			channel = checkinteger(first(args));
-			args = cdr(args);
-		}
-		WiFi.beginAP(cstring(first, ssid, 33), cstring(second, pass, 65), channel);
-	}
-	return lispstring((char *)"192.168.4.1");
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7491,16 +6828,9 @@ object *fn_wifisoftap(object *args, object *env)
 */
 object *fn_connected(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)env;
-	if (isstream(first(args)) >> 8 != WIFISTREAM)
-		error2(PSTR("invalid stream"));
-	return client.connected() ? tee : nil;
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7509,14 +6839,9 @@ object *fn_connected(object *args, object *env)
 */
 object *fn_wifilocalip(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)args, (void)env;
-	return lispstring((char *)WiFi.localIP().toString().c_str());
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 /*
@@ -7525,35 +6850,9 @@ object *fn_wifilocalip(object *args, object *env)
 */
 object *fn_wificonnect(object *args, object *env)
 {
-#if defined(ULISP_WIFI)
-	(void)env;
-	char ssid[33], pass[65];
-	if (args == NULL) {
-		WiFi.disconnect();
-		return nil;
-	}
-	if (cdr(args) == NULL)
-		WiFi.begin(cstring(first(args), ssid, 33));
-	else {
-		if (cddr(args) != NULL)
-			WiFi.config(ipstring(third(args)));
-		WiFi.begin(cstring(first(args), ssid, 33), cstring(second(args), pass, 65));
-	}
-	int result = WiFi.waitForConnectResult();
-	if (result == WL_CONNECTED)
-		return lispstring((char *)WiFi.localIP().toString().c_str());
-	else if (result == WL_NO_SSID_AVAIL)
-		error2(PSTR("network not found"));
-	else if (result == WL_CONNECT_FAILED)
-		error2(PSTR("connection failed"));
-	else
-		error2(PSTR("unable to connect"));
-	return nil;
-#else
 	(void)args, (void)env;
 	error2(PSTR("not supported"));
 	return nil;
-#endif
 }
 
 // Graphics functions
@@ -8179,88 +7478,7 @@ const char string228[] PROGMEM = "invert-display";
 const char string229[] PROGMEM = ":led-builtin";
 const char string230[] PROGMEM = ":high";
 const char string231[] PROGMEM = ":low";
-#if defined(CPU_ATSAMD21)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":ar-default";
-const char string237[] PROGMEM = ":ar-internal1v0";
-const char string238[] PROGMEM = ":ar-internal1v65";
-const char string239[] PROGMEM = ":ar-internal2v23";
-const char string240[] PROGMEM = ":ar-external";
-const char string241[] PROGMEM = ":pa-dir";
-const char string242[] PROGMEM = ":pa-dirclr";
-const char string243[] PROGMEM = ":pa-dirset";
-const char string244[] PROGMEM = ":pa-dirtgl";
-const char string245[] PROGMEM = ":pa-out";
-const char string246[] PROGMEM = ":pa-outclr";
-const char string247[] PROGMEM = ":pa-outset";
-const char string248[] PROGMEM = ":pa-outtgl";
-const char string249[] PROGMEM = ":pa-in";
-const char string250[] PROGMEM = ":pb-dir";
-const char string251[] PROGMEM = ":pb-dirclr";
-const char string252[] PROGMEM = ":pb-dirset";
-const char string253[] PROGMEM = ":pb-dirtgl";
-const char string254[] PROGMEM = ":pb-out";
-const char string255[] PROGMEM = ":pb-outclr";
-const char string256[] PROGMEM = ":pb-outset";
-const char string257[] PROGMEM = ":pb-outtgl";
-const char string258[] PROGMEM = ":pb-in";
-#elif defined(CPU_ATSAMD51)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":ar-default";
-const char string237[] PROGMEM = ":ar-internal1v0";
-const char string238[] PROGMEM = ":ar-internal1v1";
-const char string239[] PROGMEM = ":ar-internal1v2";
-const char string240[] PROGMEM = ":ar-internal1v25";
-const char string241[] PROGMEM = ":ar-internal1v65";
-const char string242[] PROGMEM = ":ar-internal2v0";
-const char string243[] PROGMEM = ":ar-internal2v2";
-const char string244[] PROGMEM = ":ar-internal2v23";
-const char string245[] PROGMEM = ":ar-internal2v4";
-const char string246[] PROGMEM = ":ar-internal2v5";
-const char string247[] PROGMEM = ":ar-external";
-const char string248[] PROGMEM = ":pa-dir";
-const char string249[] PROGMEM = ":pa-dirclr";
-const char string250[] PROGMEM = ":pa-dirset";
-const char string251[] PROGMEM = ":pa-dirtgl";
-const char string252[] PROGMEM = ":pa-out";
-const char string253[] PROGMEM = ":pa-outclr";
-const char string254[] PROGMEM = ":pa-outset";
-const char string255[] PROGMEM = ":pa-outtgl";
-const char string256[] PROGMEM = ":pa-in";
-const char string257[] PROGMEM = ":pb-dir";
-const char string258[] PROGMEM = ":pb-dirclr";
-const char string259[] PROGMEM = ":pb-dirset";
-const char string260[] PROGMEM = ":pb-dirtgl";
-const char string261[] PROGMEM = ":pb-out";
-const char string262[] PROGMEM = ":pb-outclr";
-const char string263[] PROGMEM = ":pb-outset";
-const char string264[] PROGMEM = ":pb-outtgl";
-const char string265[] PROGMEM = ":pb-in";
-#elif defined(CPU_NRF51822)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":ar-default";
-const char string237[] PROGMEM = ":ar-vbg";
-const char string238[] PROGMEM = ":ar-supply-one-half";
-const char string239[] PROGMEM = ":ar-supply-one-third";
-const char string240[] PROGMEM = ":ar-ext0";
-const char string241[] PROGMEM = ":ar-ext1";
-const char string242[] PROGMEM = ":p0-out";
-const char string243[] PROGMEM = ":p0-outset";
-const char string244[] PROGMEM = ":p0-outclr";
-const char string245[] PROGMEM = ":p0-in";
-const char string246[] PROGMEM = ":p0-dir";
-const char string247[] PROGMEM = ":p0-dirset";
-const char string248[] PROGMEM = ":p0-dirclr";
-#elif defined(CPU_NRF52840)
+#if defined(CPU_NRF52840)
 const char string232[] PROGMEM = ":input";
 const char string233[] PROGMEM = ":input-pullup";
 const char string234[] PROGMEM = ":input-pulldown";
@@ -8286,54 +7504,6 @@ const char string253[] PROGMEM = ":p1-in";
 const char string254[] PROGMEM = ":p1-dir";
 const char string255[] PROGMEM = ":p1-dirset";
 const char string256[] PROGMEM = ":p1-dirclr";
-#elif defined(CPU_NRF52833)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":ar-default";
-const char string237[] PROGMEM = ":ar-internal";
-const char string238[] PROGMEM = ":ar-vdd4";
-const char string239[] PROGMEM = ":p0-out";
-const char string240[] PROGMEM = ":p0-outset";
-const char string241[] PROGMEM = ":p0-outclr";
-const char string242[] PROGMEM = ":p0-in";
-const char string243[] PROGMEM = ":p0-dir";
-const char string244[] PROGMEM = ":p0-dirset";
-const char string245[] PROGMEM = ":p0-dirclr";
-const char string246[] PROGMEM = ":p1-out";
-const char string247[] PROGMEM = ":p1-outset";
-const char string248[] PROGMEM = ":p1-outclr";
-const char string249[] PROGMEM = ":p1-in";
-const char string250[] PROGMEM = ":p1-dir";
-const char string251[] PROGMEM = ":p1-dirset";
-const char string252[] PROGMEM = ":p1-dirclr";
-#elif defined(CPU_iMXRT1062)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":output-opendrain";
-#elif defined(CPU_MAX32620)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":output";
-const char string235[] PROGMEM = ":default";
-const char string236[] PROGMEM = ":external";
-#elif defined(CPU_RP2040)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":gpio-in";
-const char string237[] PROGMEM = ":gpio-out";
-const char string238[] PROGMEM = ":gpio-out-set";
-const char string239[] PROGMEM = ":gpio-out-clr";
-const char string240[] PROGMEM = ":gpio-out-xor";
-const char string241[] PROGMEM = ":gpio-oe";
-const char string242[] PROGMEM = ":gpio-oe-set";
-const char string243[] PROGMEM = ":gpio-oe-clr";
-const char string244[] PROGMEM = ":gpio-oe-xor";
 #endif
 
 // Documentation strings
@@ -9223,88 +8393,7 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string229, (fn_ptr_type)LED_BUILTIN, 0, NULL},
 	{string230, (fn_ptr_type)HIGH, DIGITALWRITE, NULL},
 	{string231, (fn_ptr_type)LOW, DIGITALWRITE, NULL},
-#if defined(CPU_ATSAMD21)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)AR_DEFAULT, ANALOGREFERENCE, NULL},
-	{string237, (fn_ptr_type)AR_INTERNAL1V0, ANALOGREFERENCE, NULL},
-	{string238, (fn_ptr_type)AR_INTERNAL1V65, ANALOGREFERENCE, NULL},
-	{string239, (fn_ptr_type)AR_INTERNAL2V23, ANALOGREFERENCE, NULL},
-	{string240, (fn_ptr_type)AR_EXTERNAL, ANALOGREFERENCE, NULL},
-	{string241, (fn_ptr_type)&PORT->Group[0].DIR.reg, REGISTER, NULL},
-	{string242, (fn_ptr_type)&PORT->Group[0].DIRCLR.reg, REGISTER, NULL},
-	{string243, (fn_ptr_type)&PORT->Group[0].DIRSET.reg, REGISTER, NULL},
-	{string244, (fn_ptr_type)&PORT->Group[0].DIRTGL.reg, REGISTER, NULL},
-	{string245, (fn_ptr_type)&PORT->Group[0].OUT.reg, REGISTER, NULL},
-	{string246, (fn_ptr_type)&PORT->Group[0].OUTCLR.reg, REGISTER, NULL},
-	{string247, (fn_ptr_type)&PORT->Group[0].OUTSET.reg, REGISTER, NULL},
-	{string248, (fn_ptr_type)&PORT->Group[0].OUTTGL.reg, REGISTER, NULL},
-	{string249, (fn_ptr_type)&PORT->Group[0].IN.reg, REGISTER, NULL},
-	{string250, (fn_ptr_type)&PORT->Group[1].DIR.reg, REGISTER, NULL},
-	{string251, (fn_ptr_type)&PORT->Group[1].DIRCLR.reg, REGISTER, NULL},
-	{string252, (fn_ptr_type)&PORT->Group[1].DIRSET.reg, REGISTER, NULL},
-	{string253, (fn_ptr_type)&PORT->Group[1].DIRTGL.reg, REGISTER, NULL},
-	{string254, (fn_ptr_type)&PORT->Group[1].OUT.reg, REGISTER, NULL},
-	{string255, (fn_ptr_type)&PORT->Group[1].OUTCLR.reg, REGISTER, NULL},
-	{string256, (fn_ptr_type)&PORT->Group[1].OUTSET.reg, REGISTER, NULL},
-	{string257, (fn_ptr_type)&PORT->Group[1].OUTTGL.reg, REGISTER, NULL},
-	{string258, (fn_ptr_type)&PORT->Group[1].IN.reg, REGISTER, NULL},
-#elif defined(CPU_ATSAMD51)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)AR_DEFAULT, ANALOGREFERENCE, NULL},
-	{string237, (fn_ptr_type)AR_INTERNAL1V0, ANALOGREFERENCE, NULL},
-	{string238, (fn_ptr_type)AR_INTERNAL1V1, ANALOGREFERENCE, NULL},
-	{string239, (fn_ptr_type)AR_INTERNAL1V2, ANALOGREFERENCE, NULL},
-	{string240, (fn_ptr_type)AR_INTERNAL1V25, ANALOGREFERENCE, NULL},
-	{string241, (fn_ptr_type)AR_INTERNAL1V65, ANALOGREFERENCE, NULL},
-	{string242, (fn_ptr_type)AR_INTERNAL2V0, ANALOGREFERENCE, NULL},
-	{string243, (fn_ptr_type)AR_INTERNAL2V2, ANALOGREFERENCE, NULL},
-	{string244, (fn_ptr_type)AR_INTERNAL2V23, ANALOGREFERENCE, NULL},
-	{string245, (fn_ptr_type)AR_INTERNAL2V4, ANALOGREFERENCE, NULL},
-	{string246, (fn_ptr_type)AR_INTERNAL2V5, ANALOGREFERENCE, NULL},
-	{string247, (fn_ptr_type)AR_EXTERNAL, ANALOGREFERENCE, NULL},
-	{string248, (fn_ptr_type)&PORT->Group[0].DIR.reg, REGISTER, NULL},
-	{string249, (fn_ptr_type)&PORT->Group[0].DIRCLR.reg, REGISTER, NULL},
-	{string250, (fn_ptr_type)&PORT->Group[0].DIRSET.reg, REGISTER, NULL},
-	{string251, (fn_ptr_type)&PORT->Group[0].DIRTGL.reg, REGISTER, NULL},
-	{string252, (fn_ptr_type)&PORT->Group[0].OUT.reg, REGISTER, NULL},
-	{string253, (fn_ptr_type)&PORT->Group[0].OUTCLR.reg, REGISTER, NULL},
-	{string254, (fn_ptr_type)&PORT->Group[0].OUTSET.reg, REGISTER, NULL},
-	{string255, (fn_ptr_type)&PORT->Group[0].OUTTGL.reg, REGISTER, NULL},
-	{string256, (fn_ptr_type)&PORT->Group[0].IN.reg, REGISTER, NULL},
-	{string257, (fn_ptr_type)&PORT->Group[1].DIR.reg, REGISTER, NULL},
-	{string258, (fn_ptr_type)&PORT->Group[1].DIRCLR.reg, REGISTER, NULL},
-	{string259, (fn_ptr_type)&PORT->Group[1].DIRSET.reg, REGISTER, NULL},
-	{string260, (fn_ptr_type)&PORT->Group[1].DIRTGL.reg, REGISTER, NULL},
-	{string261, (fn_ptr_type)&PORT->Group[1].OUT.reg, REGISTER, NULL},
-	{string262, (fn_ptr_type)&PORT->Group[1].OUTCLR.reg, REGISTER, NULL},
-	{string263, (fn_ptr_type)&PORT->Group[1].OUTSET.reg, REGISTER, NULL},
-	{string264, (fn_ptr_type)&PORT->Group[1].OUTTGL.reg, REGISTER, NULL},
-	{string265, (fn_ptr_type)&PORT->Group[1].IN.reg, REGISTER, NULL},
-#elif defined(CPU_NRF51822)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)AR_DEFAULT, ANALOGREFERENCE, NULL},
-	{string237, (fn_ptr_type)AR_VBG, ANALOGREFERENCE, NULL},
-	{string238, (fn_ptr_type)AR_SUPPLY_ONE_HALF, ANALOGREFERENCE, NULL},
-	{string239, (fn_ptr_type)AR_SUPPLY_ONE_THIRD, ANALOGREFERENCE, NULL},
-	{string240, (fn_ptr_type)AR_EXT0, ANALOGREFERENCE, NULL},
-	{string241, (fn_ptr_type)AR_EXT1, ANALOGREFERENCE, NULL},
-	{string242, (fn_ptr_type)&NRF_GPIO->OUT, REGISTER, NULL},
-	{string243, (fn_ptr_type)&NRF_GPIO->OUTSET, REGISTER, NULL},
-	{string244, (fn_ptr_type)&NRF_GPIO->OUTCLR, REGISTER, NULL},
-	{string245, (fn_ptr_type)&NRF_GPIO->IN, REGISTER, NULL},
-	{string246, (fn_ptr_type)&NRF_GPIO->DIR, REGISTER, NULL},
-	{string247, (fn_ptr_type)&NRF_GPIO->DIRSET, REGISTER, NULL},
-	{string248, (fn_ptr_type)&NRF_GPIO->DIRCLR, REGISTER, NULL},
-#elif defined(CPU_NRF52840)
+#if defined(CPU_NRF52840)
 	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
 	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
 	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
@@ -9330,54 +8419,6 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string254, (fn_ptr_type)&NRF_P1->DIR, REGISTER, NULL},
 	{string255, (fn_ptr_type)&NRF_P1->DIRSET, REGISTER, NULL},
 	{string256, (fn_ptr_type)&NRF_P1->DIRCLR, REGISTER, NULL},
-#elif defined(CPU_NRF52833)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)AR_DEFAULT, ANALOGREFERENCE, NULL},
-	{string237, (fn_ptr_type)AR_INTERNAL, ANALOGREFERENCE, NULL},
-	{string238, (fn_ptr_type)AR_VDD4, ANALOGREFERENCE, NULL},
-	{string239, (fn_ptr_type)&NRF_P0->OUT, REGISTER, NULL},
-	{string240, (fn_ptr_type)&NRF_P0->OUTSET, REGISTER, NULL},
-	{string241, (fn_ptr_type)&NRF_P0->OUTCLR, REGISTER, NULL},
-	{string242, (fn_ptr_type)&NRF_P0->IN, REGISTER, NULL},
-	{string243, (fn_ptr_type)&NRF_P0->DIR, REGISTER, NULL},
-	{string244, (fn_ptr_type)&NRF_P0->DIRSET, REGISTER, NULL},
-	{string245, (fn_ptr_type)&NRF_P0->DIRCLR, REGISTER, NULL},
-	{string246, (fn_ptr_type)&NRF_P1->OUT, REGISTER, NULL},
-	{string247, (fn_ptr_type)&NRF_P1->OUTSET, REGISTER, NULL},
-	{string248, (fn_ptr_type)&NRF_P1->OUTCLR, REGISTER, NULL},
-	{string249, (fn_ptr_type)&NRF_P1->IN, REGISTER, NULL},
-	{string250, (fn_ptr_type)&NRF_P1->DIR, REGISTER, NULL},
-	{string251, (fn_ptr_type)&NRF_P1->DIRSET, REGISTER, NULL},
-	{string252, (fn_ptr_type)&NRF_P1->DIRCLR, REGISTER, NULL},
-#elif defined(CPU_iMXRT1062)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)OUTPUT_OPENDRAIN, PINMODE, NULL},
-#elif defined(CPU_MAX32620)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string235, (fn_ptr_type)DEFAULT, ANALOGREFERENCE, NULL},
-	{string236, (fn_ptr_type)EXTERNAL, ANALOGREFERENCE, NULL},
-#elif defined(CPU_RP2040)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)(SIO_BASE + SIO_GPIO_IN_OFFSET), REGISTER, NULL},
-	{string237, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OUT_OFFSET), REGISTER, NULL},
-	{string238, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OUT_SET_OFFSET), REGISTER, NULL},
-	{string239, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OUT_CLR_OFFSET), REGISTER, NULL},
-	{string240, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OUT_XOR_OFFSET), REGISTER, NULL},
-	{string241, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OE_OFFSET), REGISTER, NULL},
-	{string242, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OE_SET_OFFSET), REGISTER, NULL},
-	{string243, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OE_CLR_OFFSET), REGISTER, NULL},
-	{string244, (fn_ptr_type)(SIO_BASE + SIO_GPIO_OE_XOR_OFFSET), REGISTER, NULL},
 #endif
 };
 
@@ -9496,11 +8537,7 @@ bool keywordp(object *obj)
 
 // Main evaluator
 
-#if defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY41)
-#define ENDSTACK _ebss
-#else
 #define ENDSTACK end
-#endif
 
 extern uint32_t ENDSTACK; // Bottom of stack
 
@@ -10546,7 +9583,7 @@ void initgfx()
 }
 
 // Entry point from the Arduino IDE
-void setup()
+void setup(void)
 {
 	Serial.begin(9600);
 	int start = millis();
@@ -10606,7 +9643,7 @@ void repl(object *env)
 /*
   loop - the Arduino IDE main execution loop
 */
-void loop()
+void loop(void)
 {
 	if (!setjmp(toplevel_handler)) {
 #if defined(resetautorun)
@@ -10644,4 +9681,14 @@ void ulispreset()
 #if defined(ULISP_WIFI)
 	client.stop();
 #endif
+}
+
+int main(void)
+{
+	printk("Hello World! %s\n", CONFIG_BOARD);
+
+	setup();
+	for (;;) loop();
+
+	return 0;
 }
