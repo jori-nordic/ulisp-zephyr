@@ -4,7 +4,7 @@
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
 
-#define PROGMEM
+#include "ulisp.h"
 
 // Lisp Library
 const char LispLibrary[] PROGMEM = "";
@@ -17,7 +17,7 @@ const char LispLibrary[] PROGMEM = "";
 // #define sdcardsupport
 // #define gfxsupport
 // #define lisplibrary
-#define assemblerlist
+// #define assemblerlist
 // #define lineeditor
 // #define vt100
 // #define extensions
@@ -52,88 +52,9 @@ const char LispLibrary[] PROGMEM = "";
 // #define CPU_NRF52840
 #define CPU_NATIVEPOSIX
 
-// C Macros
-
-#define nil    NULL
-#define car(x) (((object *)(x))->car)
-#define cdr(x) (((object *)(x))->cdr)
-
-#define first(x)  (((object *)(x))->car)
-#define second(x) (car(cdr(x)))
-#define cddr(x)   (cdr(cdr(x)))
-#define third(x)  (car(cdr(cdr(x))))
-
-#define push(x, y) ((y) = cons((x), (y)))
-#define pop(y)     ((y) = cdr(y))
-
-#define integerp(x)   ((x) != NULL && (x)->type == NUMBER)
-#define floatp(x)     ((x) != NULL && (x)->type == FLOAT)
-#define symbolp(x)    ((x) != NULL && (x)->type == SYMBOL)
-#define stringp(x)    ((x) != NULL && (x)->type == STRING)
-#define characterp(x) ((x) != NULL && (x)->type == CHARACTER)
-#define arrayp(x)     ((x) != NULL && (x)->type == ARRAY)
-#define streamp(x)    ((x) != NULL && (x)->type == STREAM)
-
-#define mark(x)   (car(x) = (object *)(((uintptr_t)(car(x))) | MARKBIT))
-#define unmark(x) (car(x) = (object *)(((uintptr_t)(car(x))) & ~MARKBIT))
-#define marked(x) ((((uintptr_t)(car(x))) & MARKBIT) != 0)
-#define MARKBIT   1
-
-#define setflag(x) (Flags = Flags | 1 << (x))
-#define clrflag(x) (Flags = Flags & ~(1 << (x)))
-#define tstflag(x) (Flags & 1 << (x))
-
-#define issp(x)        (x == ' ' || x == '\n' || x == '\r' || x == '\t')
-#define isbr(x)        (x == ')' || x == '(' || x == '"' || x == '#')
-#define longsymbolp(x) (((x)->name & 0x03) == 0)
-#define twist(x)       ((uint32_t)((x) << 2) | (((x)&0xC0000000) >> 30))
-#define untwist(x)     (((x) >> 2 & 0x3FFFFFFF) | ((x)&0x03) << 30)
-#define arraysize(x)   (sizeof(x) / sizeof(x[0]))
-#define PACKEDS        0x43238000
-#define BUILTINS       0xF4240000
-#define ENDFUNCTIONS   1536
-
-// Code marker stores start and end of code block
-#define startblock(x) ((x->integer) & 0xFFFF)
-#define endblock(x)   ((x->integer) >> 16 & 0xFFFF)
-
 // Constants
 
 const int TRACEMAX = 3; // Number of traced functions
-enum type {
-	ZZERO = 0,
-	SYMBOL = 2,
-	CODE = 4,
-	NUMBER = 6,
-	STREAM = 8,
-	CHARACTER = 10,
-	FLOAT = 12,
-	ARRAY = 14,
-	STRING = 16,
-	PAIR = 18
-}; // ARRAY STRING and PAIR must be last
-enum token {
-	UNUSED,
-	BRA,
-	KET,
-	QUO,
-	DOT
-};
-enum stream {
-	SERIALSTREAM,
-	I2CSTREAM,
-	SPISTREAM,
-	SDSTREAM,
-	WIFISTREAM,
-	STRINGSTREAM,
-	GFXSTREAM
-};
-enum fntypes_t {
-	OTHER_FORMS,
-	TAIL_FORMS,
-	FUNCTIONS,
-	SPECIAL_FORMS
-};
 
 // Stream names used by printobject
 const char serialstream[] PROGMEM = "serial";
@@ -147,75 +68,6 @@ const char *const streamname[] PROGMEM = {serialstream, i2cstream,    spistream,
 					  wifistream,   stringstream, gfxstream};
 
 // Typedefs
-
-typedef uint32_t symbol_t;
-
-typedef struct sobject {
-	union {
-		struct {
-			sobject *car;
-			sobject *cdr;
-		};
-		struct {
-			unsigned int type;
-			union {
-				symbol_t name;
-				int integer;
-				int chars; // For strings
-				float single_float;
-			};
-		};
-	};
-} object;
-
-typedef object *(*fn_ptr_type)(object *, object *);
-typedef void (*mapfun_t)(object *, object **);
-typedef int (*intfn_ptr_type)(int w, int x, int y, int z);
-
-typedef const struct {
-	const char *string;
-	fn_ptr_type fptr;
-	uint8_t minmax;
-	const char *doc;
-} tbl_entry_t;
-
-typedef int (*gfun_t)();
-typedef void (*pfun_t)(char);
-
-typedef uint16_t builtin_t;
-
-enum builtins : builtin_t {
-	NIL,
-	TEE,
-	NOTHING,
-	OPTIONAL,
-	INITIALELEMENT,
-	ELEMENTTYPE,
-	BIT,
-	AMPREST,
-	LAMBDA,
-	LET,
-	LETSTAR,
-	CLOSURE,
-	PSTAR,
-	QUOTE,
-	DEFUN,
-	DEFVAR,
-	DEFCODE,
-	CAR,
-	FIRST,
-	CDR,
-	REST,
-	NTH,
-	AREF,
-	STRINGFN,
-	PINMODE,
-	DIGITALWRITE,
-	ANALOGREAD,
-	ANALOGREFERENCE,
-	REGISTER,
-	FORMAT,
-};
 
 // Global variables
 
@@ -412,7 +264,7 @@ object *myalloc()
   myfree - adds obj to the linked list of free objects.
   inline makes gc significantly faster
 */
-inline void myfree(object *obj)
+void myfree(object *obj)
 {
 	car(obj) = NULL;
 	cdr(obj) = Freelist;
@@ -480,7 +332,7 @@ object *symbol(symbol_t name)
 /*
   bsymbol - make a built-in symbol
 */
-inline object *bsymbol(builtin_t name)
+object *bsymbol(builtin_t name)
 {
 	return intern(twist(name + BUILTINS));
 }
@@ -801,12 +653,12 @@ void FlashBusy()
 	digitalWrite(ssel, 1);
 }
 
-inline void FlashWrite(uint8_t data)
+void FlashWrite(uint8_t data)
 {
 	shiftOut(mosi, sck, MSBFIRST, data);
 }
 
-inline uint8_t FlashReadByte()
+uint8_t FlashReadByte()
 {
 	return shiftIn(miso, sck, MSBFIRST);
 }
@@ -879,7 +731,7 @@ void FlashWrite32(uint32_t *addr, uint32_t data)
 	FlashWriteByte(addr, data >> 24 & 0xFF);
 }
 
-inline void FlashEndWrite(uint32_t *addr)
+void FlashEndWrite(uint32_t *addr)
 {
 	(void)addr;
 	digitalWrite(ssel, 1);
@@ -907,7 +759,7 @@ uint32_t FlashRead32(uint32_t *addr)
 	return b0 | b1 << 8 | b2 << 16 | b3 << 24;
 }
 
-inline void FlashEndRead(uint32_t *addr)
+void FlashEndRead(uint32_t *addr)
 {
 	(void)addr;
 	digitalWrite(ssel, 1);
@@ -1292,7 +1144,7 @@ bool consp(object *x)
 /*
   atom - implements Lisp atom
 */
-#define atom(x) (!consp(x))
+// #define atom(x) (!consp(x))
 
 /*
   listp - implements Lisp listp
@@ -1308,7 +1160,7 @@ bool listp(object *x)
 /*
   improperp - tests whether x is an improper list
 */
-#define improperp(x) (!listp(x))
+// #define improperp(x) (!listp(x))
 
 object *quote(object *arg)
 {
@@ -2715,58 +2567,60 @@ object *mapcarcan(object *args, object *env, mapfun_t fun)
 
 void I2Cinit(TwoWire *port, bool enablePullup)
 {
-	(void)enablePullup;
-	port->begin();
+	// port->begin();
 }
 
 int I2Cread(TwoWire *port)
 {
-	return port->read();
+	// return port->read();
+	return 0;
 }
 
 void I2Cwrite(TwoWire *port, uint8_t data)
 {
-	port->write(data);
+	// port->write(data);
 }
 
 bool I2Cstart(TwoWire *port, uint8_t address, uint8_t read)
 {
-	int ok = true;
-	if (read == 0) {
-		port->beginTransmission(address);
-		ok = (port->endTransmission(true) == 0);
-		port->beginTransmission(address);
-	} else
-		port->requestFrom(address, I2Ccount);
-	return ok;
+	// int ok = true;
+	// if (read == 0) {
+	// 	port->beginTransmission(address);
+	// 	ok = (port->endTransmission(true) == 0);
+	// 	port->beginTransmission(address);
+	// } else
+	// 	port->requestFrom(address, I2Ccount);
+	// return ok;
+	return true;
 }
 
 bool I2Crestart(TwoWire *port, uint8_t address, uint8_t read)
 {
-	int error = (port->endTransmission(false) != 0);
-	if (read == 0)
-		port->beginTransmission(address);
-	else
-		port->requestFrom(address, I2Ccount);
-	return error ? false : true;
+	// int error = (port->endTransmission(false) != 0);
+	// if (read == 0)
+	// 	port->beginTransmission(address);
+	// else
+	// 	port->requestFrom(address, I2Ccount);
+	// return error ? false : true;
+	return true;
 }
 
 void I2Cstop(TwoWire *port, uint8_t read)
 {
-	if (read == 0)
-		port->endTransmission(); // Check for error?
+	// if (read == 0)
+	// 	port->endTransmission(); // Check for error?
 }
 
 // Streams
 
-// inline int spiread () { return SPI.transfer(0); }
-inline int spiread () { return 0; }
-// inline int i2cread () { return I2Cread(&Wire); }
-inline int i2cread () { return 0; }
+// int spiread () { return SPI.transfer(0); }
+int spiread () { return 0; }
+// int i2cread () { return I2Cread(&Wire); }
+int i2cread () { return 0; }
 
 #if defined(sdcardsupport)
 File SDpfile, SDgfile;
-inline int SDread()
+int SDread()
 {
 	if (LastChar) {
 		char temp = LastChar;
@@ -2815,22 +2669,22 @@ gfun_t gstreamfun(object *args)
 	return gfun;
 }
 
-inline void spiwrite(char c)
+void spiwrite(char c)
 {
-	SPI.transfer(c);
+	// SPI.transfer(c);
 }
-inline void i2cwrite(char c)
+void i2cwrite(char c)
 {
-	I2Cwrite(&Wire, c);
+	// I2Cwrite(&Wire, c);
 }
 #if defined(sdcardsupport)
-inline void SDwrite(char c)
+void SDwrite(char c)
 {
 	SDpfile.write(c);
 }
 #endif
 #if defined(gfxsupport)
-inline void gfxwrite(char c)
+void gfxwrite(char c)
 {
 	tft.write(c);
 }
@@ -6090,6 +5944,59 @@ object *fn_cls(object *args, object *env)
 
 // Arduino procedures
 
+void Serialbegin(uint32_t baudrate)
+{
+	// FIXME: implement
+	return;
+}
+
+bool Serialready(void)
+{
+	// FIXME: implement
+	return true;
+}
+
+void Serialwrite(char c)
+{
+	// FIXME: implement
+	return;
+}
+
+void Serialflush(void)
+{
+	// FIXME: implement
+	return;
+}
+
+char Serialread(void)
+{
+	// FIXME: implement
+	return 0;
+}
+
+uint32_t Serialavailable(void)
+{
+	// FIXME: implement
+	return 0;
+}
+
+uint32_t random(void)
+{
+	// FIXME: implement
+	return 0;
+}
+
+uint32_t rand(void)
+{
+	// FIXME: implement
+	return 0;
+}
+
+uint64_t millis(void)
+{
+	return k_uptime_get();
+}
+
 void pinMode(uint32_t pin, uint32_t mode)
 {
 	// FIXME: implement
@@ -6124,6 +6031,11 @@ void analogWriteResolution(uint32_t bits)
 {
 	// FIXME: implement
 	return;
+}
+
+static void delay(uint32_t ms)
+{
+	k_msleep(ms);
 }
 
 /*
@@ -6288,7 +6200,7 @@ object *fn_delay(object *args, object *env)
 {
 	(void)env;
 	object *arg1 = first(args);
-	k_msleep(checkinteger(arg1));
+	delay(checkinteger(arg1));
 	return arg1;
 }
 
@@ -8517,7 +8429,7 @@ boolean findsubstring(char *part, builtin_t name)
 */
 void testescape()
 {
-	if (Serial.read() == '~')
+	if (Serialread() == '~')
 		error2(PSTR("escape!"));
 }
 
@@ -8537,7 +8449,7 @@ bool keywordp(object *obj)
 
 // Main evaluator
 
-#define ENDSTACK end
+// #define ENDSTACK end
 
 extern uint32_t ENDSTACK; // Bottom of stack
 
@@ -8550,7 +8462,7 @@ object *eval(object *form, object *env)
 	int TC = 0;
 EVAL:
 	// Enough space?
-	// Serial.println((uint32_t)sp - (uint32_t)&ENDSTACK); // Find best STACKDIFF value
+	// Serialprintln((uint32_t)sp - (uint32_t)&ENDSTACK); // Find best STACKDIFF value
 	if (((uint32_t)sp - (uint32_t)&ENDSTACK) < STACKDIFF) {
 		Context = NIL;
 		error2(PSTR("stack overflow"));
@@ -8752,8 +8664,8 @@ void pserial(char c)
 {
 	LastPrint = c;
 	if (c == '\n')
-		Serial.write('\r');
-	Serial.write(c);
+		Serialwrite('\r');
+	Serialwrite(c);
 }
 
 const char ControlCodes[] PROGMEM =
@@ -9039,7 +8951,7 @@ void pfloat(float f, pfun_t pfun)
 /*
   pln - prints a newline to the specified stream
 */
-inline void pln(pfun_t pfun)
+void pln(pfun_t pfun)
 {
 	pfun('\n');
 }
@@ -9169,20 +9081,20 @@ volatile uint8_t KybdAvailable = 0;
 // Parenthesis highlighting
 void esc(int p, char c)
 {
-	Serial.write('\e');
-	Serial.write('[');
-	Serial.write((char)('0' + p / 100));
-	Serial.write((char)('0' + (p / 10) % 10));
-	Serial.write((char)('0' + p % 10));
-	Serial.write(c);
+	Serialwrite('\e');
+	Serialwrite('[');
+	Serialwrite((char)('0' + p / 100));
+	Serialwrite((char)('0' + (p / 10) % 10));
+	Serialwrite((char)('0' + p % 10));
+	Serialwrite(c);
 }
 
 void hilight(char c)
 {
-	Serial.write('\e');
-	Serial.write('[');
-	Serial.write(c);
-	Serial.write('m');
+	Serialwrite('\e');
+	Serialwrite('[');
+	Serialwrite(c);
+	Serialwrite('m');
 }
 
 /*
@@ -9212,8 +9124,8 @@ void Highlight(int p, int wp, uint8_t invert)
 			esc(-left, 'C');
 		if (invert)
 			hilight('7');
-		Serial.write('(');
-		Serial.write('\b');
+		Serialwrite('(');
+		Serialwrite('\b');
 		// Go back
 		if (up)
 			esc(up, 'B'); // Down
@@ -9221,8 +9133,8 @@ void Highlight(int p, int wp, uint8_t invert)
 			esc(left, 'C');
 		else
 			esc(-left, 'D');
-		Serial.write('\b');
-		Serial.write(')');
+		Serialwrite('\b');
+		Serialwrite(')');
 		if (invert)
 			hilight('0');
 	}
@@ -9253,15 +9165,15 @@ void processkey(char c)
 	if (c == 8 || c == 0x7f) { // Backspace key
 		if (WritePtr > 0) {
 			WritePtr--;
-			Serial.write(8);
-			Serial.write(' ');
-			Serial.write(8);
+			Serialwrite(8);
+			Serialwrite(' ');
+			Serialwrite(8);
 			if (WritePtr)
 				c = KybdBuf[WritePtr - 1];
 		}
 	} else if (WritePtr < KybdBufSize) {
 		KybdBuf[WritePtr++] = c;
-		Serial.write(c);
+		Serialwrite(c);
 	}
 #if defined(vt100)
 	// Do new parenthesis highlight
@@ -9297,9 +9209,9 @@ int gserial()
 	}
 #if defined(lineeditor)
 	while (!KybdAvailable) {
-		while (!Serial.available())
+		while (!Serialavailable())
 			;
-		char temp = Serial.read();
+		char temp = Serialread();
 		processkey(temp);
 	}
 	if (ReadPtr != WritePtr)
@@ -9309,10 +9221,10 @@ int gserial()
 	return '\n';
 #else
 	unsigned long start = millis();
-	while (!Serial.available())
+	while (!Serialavailable())
 		if (millis() - start > 1000)
 			clrflag(NOECHO);
-	char temp = Serial.read();
+	char temp = Serialread();
 	if (temp != '\n' && !tstflag(NOECHO))
 		pserial(temp);
 	return temp;
@@ -9585,10 +9497,11 @@ void initgfx()
 // Entry point from the Arduino IDE
 void setup(void)
 {
-	Serial.begin(9600);
+	// FIXME: enable serial
+	Serialbegin(9600);
 	int start = millis();
 	while ((millis() - start) < 5000) {
-		if (Serial)
+		if (Serialready())
 			break;
 	}
 	initworkspace();
@@ -9607,7 +9520,8 @@ void setup(void)
 void repl(object *env)
 {
 	for (;;) {
-		randomSeed(micros());
+		// FIXME: re-enable the seed
+		// randomSeed(micros());
 		gc(NULL, env);
 #if defined(printfreespace)
 		pint(Freespace, pserial);
@@ -9621,7 +9535,7 @@ void repl(object *env)
 		Context = NIL;
 		object *line = read(gserial);
 #if defined(CPU_NRF52840)
-		Serial.flush();
+		Serialflush();
 #endif
 		if (BreakLevel && line == nil) {
 			pln(pserial);
@@ -9662,8 +9576,9 @@ void ulispreset()
 {
 	// Come here after error
 	delay(100);
-	while (Serial.available())
-		Serial.read();
+	// FIXME: flush console
+	while (Serialavailable())
+		Serialread();
 	clrflag(NOESC);
 	BreakLevel = 0;
 	for (int i = 0; i < TRACEMAX; i++)
