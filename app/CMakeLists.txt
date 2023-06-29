@@ -6,3 +6,4 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ulisp)
 
 target_sources(app PRIVATE ../ulisp-arm-comments.cpp)
+target_include_directories(app PRIVATE src)

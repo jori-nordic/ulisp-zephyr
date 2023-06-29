@@ -7,6 +7,23 @@
 #define PROGMEM
 #define PSTR(x) x
 #define PGM_P const char *
+enum pinModes {
+	INPUT,
+	OUTPUT,
+	INPUT_PULLUP,
+	INPUT_PULLDOWN,
+};
+
+#define LOW 0UL
+#define HIGH 1UL
+#define LED_BUILTIN 0
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <cstring>
+#include <zephyr/kernel.h>
+#include <math.h>
 
 // Lisp Library
 
@@ -96,6 +113,10 @@ enum fntypes_t {
 
 // Typedefs
 
+typedef void* TwoWire;
+typedef void* File;
+typedef bool boolean;
+
 typedef uint32_t symbol_t;
 
 typedef struct sobject {
@@ -178,7 +199,6 @@ enum flag {
 };
 
 // Forward references
-object *tee;
 void pfstring(PGM_P s, pfun_t pfun);
 
 // Error handling
@@ -375,15 +395,7 @@ uint32_t FlashRead32(uint32_t *addr);
 
 inline void FlashEndRead(uint32_t *addr);
 
-// For ATSAMD21
-__attribute__((__aligned__(256))) static const uint8_t flash_store[FLASHSIZE] = {};
-
-void row_erase(const volatile void *addr)
-{
-	NVMCTRL->ADDR.reg = ((uint32_t)addr) / 2;
-	NVMCTRL->CTRLA.reg = NVMCTRL_CTRLA_CMDEX_KEY | NVMCTRL_CTRLA_CMD_ER;
-	while (!NVMCTRL->INTFLAG.bit.READY);
-}
+void row_erase(const volatile void *addr);
 
 void page_clear();
 
@@ -853,23 +865,13 @@ File SDpfile, SDgfile;
 int SDread();
 #endif
 
-void serialbegin (int address, int baud)
-{
-	// address == peripheral instance
-	return;
-}
+void serialbegin (int address, int baud);
 
-void serialend (int address)
-{
-	return;
-}
+void serialend (int address);
 
 gfun_t gstreamfun(object *args);
 
-inline void spiwrite(char c)
-{
-	// SPI.transfer(c);
-}
+inline void spiwrite(char c);
 inline void i2cwrite(char c);
 #if defined(sdcardsupport)
 inline void SDwrite(char c);
@@ -890,11 +892,7 @@ void checkanalogwrite(int pin);
 ;
 void tone(uint32_t pin, uint32_t frequency);
 
-void noTone(uint32_t pin)
-{
-	// FIXME: not implemented
-	return;
-}
+void noTone(uint32_t pin);
 
 void playnote(int pin, int note, int octave);
 
@@ -907,11 +905,6 @@ void initsleep();
 void doze(int secs);
 
 // Prettyprint
-
-const int PPINDENT = 2;
-const int PPWIDTH = 80;
-const int GFXPPWIDTH = 52; // 320 pixel wide screen
-int ppwidth = PPWIDTH;
 
 void pcount(char c);
 
@@ -2021,11 +2014,16 @@ char Serialread(void);
 
 uint32_t Serialavailable(void);
 
-uint32_t random(void);
-
-uint32_t rand(void);
-
 uint64_t millis(void);
+
+uint64_t micros(void);
+
+uint32_t bitRead(uint32_t value, uint32_t index);
+
+static inline uint32_t arduinoRandom(uint32_t max)
+{
+	return MAX(random(), max);
+}
 
 void pinMode(uint32_t pin, uint32_t mode);
 

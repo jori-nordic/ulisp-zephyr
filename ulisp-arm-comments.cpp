@@ -96,20 +96,10 @@ char LastChar = 0;
 char LastPrint = 0;
 
 // Flags
-enum flag {
-	PRINTREADABLY,
-	RETURNFLAG,
-	ESCAPE,
-	EXITEDITOR,
-	LIBRARYLOADED,
-	NOESC,
-	NOECHO,
-	MUFFLEERRORS
-};
 volatile uint8_t Flags = 0b00001; // PRINTREADABLY set by default
 
 // Forward references
-object *tee;
+extern object *tee;
 void pfstring(PGM_P s, pfun_t pfun);
 
 // Error handling
@@ -4703,14 +4693,16 @@ object *fn_mod(object *args, object *env)
 			remainder = remainder + divisor;
 		return number(remainder);
 	} else {
-		float fdivisor = checkintfloat(arg2);
-		if (fdivisor == 0.0)
-			error2(PSTR("division by zero"));
-		float fdividend = checkintfloat(arg1);
-		float fremainder = fmod(fdividend, fdivisor);
-		if ((fdividend < 0) != (fdivisor < 0))
-			fremainder = fremainder + fdivisor;
-		return makefloat(fremainder);
+		error2(PSTR("float modulo not supported"));
+		return nil;
+		// float fdivisor = checkintfloat(arg2);
+		// if (fdivisor == 0.0)
+		// 	error2(PSTR("division by zero"));
+		// float fdividend = checkintfloat(arg1);
+		// float fremainder = fmod(fdividend, fdivisor);
+		// if ((fdividend < 0) != (fdivisor < 0))
+		// 	fremainder = fremainder + fdivisor;
+		// return makefloat(fremainder);
 	}
 }
 
@@ -4793,7 +4785,7 @@ object *fn_random(object *args, object *env)
 	(void)env;
 	object *arg = first(args);
 	if (integerp(arg))
-		return number(random(arg->integer));
+		return number(arduinoRandom(arg->integer));
 	else if (floatp(arg))
 		return makefloat((float)rand() / (float)(RAND_MAX / (arg->single_float)));
 	else
@@ -5875,7 +5867,8 @@ object *fn_restarti2c(object *args, object *env)
 		error2(PSTR("not an i2c stream"));
 	TwoWire *port;
 	if (address < 128)
-		port = &Wire;
+		// port = &Wire;
+		port = 0;
 	return I2Crestart(port, address & 0x7F, read) ? tee : nil;
 }
 
@@ -5980,21 +5973,21 @@ uint32_t Serialavailable(void)
 	return 0;
 }
 
-uint32_t random(void)
-{
-	// FIXME: implement
-	return 0;
-}
-
-uint32_t rand(void)
-{
-	// FIXME: implement
-	return 0;
-}
-
 uint64_t millis(void)
 {
 	return k_uptime_get();
+}
+
+uint64_t micros(void)
+{
+	// TODO: hack, remove users instead
+	return k_uptime_get() * 1000;
+}
+
+// bitRead(value, index) == 1) ? tee : nil;
+uint32_t bitRead(uint32_t value, uint32_t index)
+{
+	return value & BIT(index) ? 1 : 0;
 }
 
 void pinMode(uint32_t pin, uint32_t mode)
@@ -8458,7 +8451,14 @@ extern uint32_t ENDSTACK; // Bottom of stack
 */
 object *eval(object *form, object *env)
 {
+#ifdef CPU_NRF52840
 	register int *sp asm("r13");
+#endif
+
+#ifdef CPU_NATIVEPOSIX
+	register int *sp asm("sp");
+#endif
+
 	int TC = 0;
 EVAL:
 	// Enough space?
