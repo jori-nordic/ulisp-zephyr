@@ -18,13 +18,19 @@ const char LispLibrary[] PROGMEM = "";
 // #define gfxsupport
 // #define lisplibrary
 // #define assemblerlist
-// #define lineeditor
-// #define vt100
+#define lineeditor
+#define vt100
 // #define extensions
 
 // Zephyr includes
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/uart.h>
 #include <strings.h>		/* for strcasecmp */
+
+#define UART_DEVICE_NODE DT_CHOSEN(zephyr_shell_uart)
+static const struct device *const uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
+
 // Includes
 
 // #include "LispLibrary.h"
@@ -100,7 +106,7 @@ char LastPrint = 0;
 volatile uint8_t Flags = 0b00001; // PRINTREADABLY set by default
 
 // Forward references
-extern object *tee;
+object *tee;
 void pfstring(PGM_P s, pfun_t pfun);
 
 // Error handling
@@ -5952,26 +5958,44 @@ bool Serialready(void)
 
 void Serialwrite(char c)
 {
-	// FIXME: implement
+	uart_poll_out(uart_dev, c);
+
 	return;
 }
 
 void Serialflush(void)
 {
-	// FIXME: implement
-	return;
+	char c;
+
+	while (uart_poll_in(uart_dev, &c) == 0);
+}
+
+char Serialreadnoblock(void)
+{
+	char c;
+
+	uart_poll_in(uart_dev, &c);
+
+	return c;
 }
 
 char Serialread(void)
 {
-	// FIXME: implement
-	return 0;
+	char c;
+
+	while (uart_poll_in(uart_dev, &c) != 0) {
+		k_msleep(1);
+	}
+
+	return c;
 }
 
 uint32_t Serialavailable(void)
 {
-	// FIXME: implement
-	return 0;
+	/* Fake a char always available on uart.
+	 * Serialread will do a blocking read
+	 */
+	return 1;
 }
 
 uint64_t millis(void)
@@ -8423,7 +8447,7 @@ boolean findsubstring(char *part, builtin_t name)
 */
 void testescape()
 {
-	if (Serialread() == '~')
+	if (Serialreadnoblock() == '~')
 		error2(PSTR("escape!"));
 }
 
@@ -9201,7 +9225,7 @@ void processkey(char c)
 /*
   gserial - gets a character from the serial port
 */
-int gserial()
+int gserial(void)
 {
 	if (LastChar) {
 		char temp = LastChar;
@@ -9210,9 +9234,10 @@ int gserial()
 	}
 #if defined(lineeditor)
 	while (!KybdAvailable) {
-		while (!Serialavailable())
-			;
+		/* Wait and get a char over serial */
+		while (!Serialavailable()) ;
 		char temp = Serialread();
+		/* this may set kybdAvailable */
 		processkey(temp);
 	}
 	if (ReadPtr != WritePtr)
@@ -9578,8 +9603,7 @@ void ulispreset()
 	// Come here after error
 	delay(100);
 	// FIXME: flush console
-	while (Serialavailable())
-		Serialread();
+	/* Serialflush(); */
 	clrflag(NOESC);
 	BreakLevel = 0;
 	for (int i = 0; i < TRACEMAX; i++)
@@ -9601,7 +9625,12 @@ void ulispreset()
 
 int main(void)
 {
-	printk("Hello World! %s\n", CONFIG_BOARD);
+	if (!device_is_ready(uart_dev)) {
+		printk("UART device not found!");
+		return 0;
+	}
+
+	printk("Setting up ulisp..");
 
 	setup();
 	for (;;) loop();
