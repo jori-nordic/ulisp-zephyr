@@ -13,7 +13,7 @@ const char LispLibrary[] PROGMEM = "";
 
 // #define resetautorun
 #define printfreespace
-// #define printgcs
+#define printgcs
 // #define sdcardsupport
 // #define gfxsupport
 // #define lisplibrary
