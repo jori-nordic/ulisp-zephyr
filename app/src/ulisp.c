@@ -5886,14 +5886,14 @@ object *fn_restarti2c(object *args, object *env)
 object *fn_gc(object *obj, object *env)
 {
 	int initial = Freespace;
-	unsigned long start = micros();
+	unsigned long start = millis();
 	gc(obj, env);
-	unsigned long elapsed = micros() - start;
+	unsigned long elapsed = millis() - start;
 	pfstring(PSTR("Space: "), pserial);
 	pint(Freespace - initial, pserial);
 	pfstring(PSTR(" bytes, Time: "), pserial);
 	pint(elapsed, pserial);
-	pfstring(PSTR(" us\n"), pserial);
+	pfstring(PSTR(" ms\n"), pserial);
 	return nil;
 }
 
@@ -6001,12 +6001,6 @@ uint32_t Serialavailable(void)
 uint64_t millis(void)
 {
 	return k_uptime_get();
-}
-
-uint64_t micros(void)
-{
-	// TODO: hack, remove users instead
-	return k_uptime_get() * 1000;
 }
 
 // bitRead(value, index) == 1) ? tee : nil;
