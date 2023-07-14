@@ -7455,33 +7455,6 @@ const char string230[] PROGMEM = ":high";
 const char string231[] PROGMEM = ":low";
 const char string232[] PROGMEM = "bt-enable";
 const char string233[] PROGMEM = "bt-adv";
-#if defined(CPU_NRF52840)
-const char string232[] PROGMEM = ":input";
-const char string233[] PROGMEM = ":input-pullup";
-const char string234[] PROGMEM = ":input-pulldown";
-const char string235[] PROGMEM = ":output";
-const char string236[] PROGMEM = ":ar-default";
-const char string237[] PROGMEM = ":ar-internal";
-const char string238[] PROGMEM = ":ar-internal-3-0";
-const char string239[] PROGMEM = ":ar-internal-2-4";
-const char string240[] PROGMEM = ":ar-internal-1-8";
-const char string241[] PROGMEM = ":ar-internal-1-2";
-const char string242[] PROGMEM = ":ar-vdd4";
-const char string243[] PROGMEM = ":p0-out";
-const char string244[] PROGMEM = ":p0-outset";
-const char string245[] PROGMEM = ":p0-outclr";
-const char string246[] PROGMEM = ":p0-in";
-const char string247[] PROGMEM = ":p0-dir";
-const char string248[] PROGMEM = ":p0-dirset";
-const char string249[] PROGMEM = ":p0-dirclr";
-const char string250[] PROGMEM = ":p1-out";
-const char string251[] PROGMEM = ":p1-outset";
-const char string252[] PROGMEM = ":p1-outclr";
-const char string253[] PROGMEM = ":p1-in";
-const char string254[] PROGMEM = ":p1-dir";
-const char string255[] PROGMEM = ":p1-dirset";
-const char string256[] PROGMEM = ":p1-dirclr";
-#endif
 
 // Documentation strings
 const char doc0[] PROGMEM = "nil\n"
@@ -8375,33 +8348,6 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string231, (fn_ptr_type)LOW, DIGITALWRITE, NULL},
 	{string232, fn_bt_enable, 0200, NULL},
 	{string233, fn_bt_adv, 0201, doc229},
-#if defined(CPU_NRF52840)
-	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
-	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
-	{string234, (fn_ptr_type)INPUT_PULLDOWN, PINMODE, NULL},
-	{string235, (fn_ptr_type)OUTPUT, PINMODE, NULL},
-	{string236, (fn_ptr_type)AR_DEFAULT, ANALOGREFERENCE, NULL},
-	{string237, (fn_ptr_type)AR_INTERNAL, ANALOGREFERENCE, NULL},
-	{string238, (fn_ptr_type)AR_INTERNAL_3_0, ANALOGREFERENCE, NULL},
-	{string239, (fn_ptr_type)AR_INTERNAL_2_4, ANALOGREFERENCE, NULL},
-	{string240, (fn_ptr_type)AR_INTERNAL_1_8, ANALOGREFERENCE, NULL},
-	{string241, (fn_ptr_type)AR_INTERNAL_1_2, ANALOGREFERENCE, NULL},
-	{string242, (fn_ptr_type)AR_VDD4, ANALOGREFERENCE, NULL},
-	{string243, (fn_ptr_type)&NRF_P0->OUT, REGISTER, NULL},
-	{string244, (fn_ptr_type)&NRF_P0->OUTSET, REGISTER, NULL},
-	{string245, (fn_ptr_type)&NRF_P0->OUTCLR, REGISTER, NULL},
-	{string246, (fn_ptr_type)&NRF_P0->IN, REGISTER, NULL},
-	{string247, (fn_ptr_type)&NRF_P0->DIR, REGISTER, NULL},
-	{string248, (fn_ptr_type)&NRF_P0->DIRSET, REGISTER, NULL},
-	{string249, (fn_ptr_type)&NRF_P0->DIRCLR, REGISTER, NULL},
-	{string250, (fn_ptr_type)&NRF_P1->OUT, REGISTER, NULL},
-	{string251, (fn_ptr_type)&NRF_P1->OUTSET, REGISTER, NULL},
-	{string252, (fn_ptr_type)&NRF_P1->OUTCLR, REGISTER, NULL},
-	{string253, (fn_ptr_type)&NRF_P1->IN, REGISTER, NULL},
-	{string254, (fn_ptr_type)&NRF_P1->DIR, REGISTER, NULL},
-	{string255, (fn_ptr_type)&NRF_P1->DIRSET, REGISTER, NULL},
-	{string256, (fn_ptr_type)&NRF_P1->DIRCLR, REGISTER, NULL},
-#endif
 };
 
 #if !defined(extensions)
