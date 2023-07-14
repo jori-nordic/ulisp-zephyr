@@ -27,6 +27,7 @@ const char LispLibrary[] PROGMEM = "";
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include <strings.h>		/* for strcasecmp */
 
 #define UART_DEVICE_NODE DT_CHOSEN(zephyr_shell_uart)
@@ -7170,6 +7171,8 @@ object *fn_invertdisplay(object *args, object *env)
 	return nil;
 }
 
+/* Bluetooth module */
+
 object *fn_bt_enable(object *args, object *env)
 {
 	(void)env;
@@ -7232,6 +7235,148 @@ object *fn_bt_adv(object *args, object *env)
 
 	return number(err);
 }
+
+int connect_rssi = 0xFF;
+char connect_name[50] = {0};
+struct bt_conn *default_conn;
+
+static void connect_to_device(const bt_addr_le_t *addr)
+{
+	char dev[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(addr, dev, sizeof(dev));
+	printk("Connecting to %s\n", dev);
+
+	int err = bt_le_scan_stop();
+	if (err) {
+		printk("Stop LE scan failed (err %d)\n", err);
+		return;
+	}
+
+	err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN,
+				BT_LE_CONN_PARAM_DEFAULT, &default_conn);
+	if (err) {
+		printk("Create conn failed (err %d)\n", err);
+		return;
+	}
+}
+
+static bool check_name(struct bt_data *data, void *user_data)
+{
+	bt_addr_le_t *addr = user_data;
+
+	if (connect_name[0] == 0) {
+		connect_to_device(addr);
+		return false;
+	}
+
+	switch (data->type) {
+	case BT_DATA_NAME_SHORTENED:
+	case BT_DATA_NAME_COMPLETE:
+		printk("Device name : %.*s\n", data->data_len, data->data);
+		int name_len = strlen(connect_name);
+		if (strncmp(connect_name, data->data, name_len) == 0) {
+			connect_to_device(addr);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
+			 struct net_buf_simple *ad)
+{
+	/* no filters */
+	if (connect_rssi == 0xFF && connect_name[0] == 0) {
+		connect_to_device(addr);
+		return;
+	}
+
+	/* filter on rssi */
+	if (connect_rssi != 0xFF && rssi < connect_rssi) {
+		return;
+	}
+
+	char dev[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(addr, dev, sizeof(dev));
+	printk("[DEVICE]: %s, AD evt type %u, AD data len %u, RSSI %i\n",
+	       dev, type, ad->len, rssi);
+
+	if (type == BT_GAP_ADV_TYPE_ADV_IND ||
+	    type == BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
+		bt_data_parse(ad, check_name, (void *)addr);
+	}
+}
+
+static void start_scan(void)
+{
+	int err;
+
+	/* Use active scanning and disable duplicate filtering to handle any
+	 * devices that might update their advertising data at runtime. */
+	struct bt_le_scan_param scan_param = {
+		.type       = BT_LE_SCAN_TYPE_ACTIVE,
+		.options    = BT_LE_SCAN_OPT_NONE,
+		.interval   = BT_GAP_SCAN_FAST_INTERVAL,
+		.window     = BT_GAP_SCAN_FAST_WINDOW,
+	};
+
+	err = bt_le_scan_start(&scan_param, device_found);
+	if (err) {
+		printk("Scanning failed to start (err %d)\n", err);
+		return;
+	}
+
+	printk("Scanning successfully started\n");
+}
+
+/* conns go into a table: id, ptr */
+object *fn_bt_connect(object *args, object *env)
+{
+	(void)env;
+
+	checkargs(args);
+
+	if (stringp(first(args))) {
+		cstring(first(args), connect_name, 50);
+		printk("Connecting to %s", connect_name);
+		args = cdr(args); /* consume first argument */
+	} else {
+		connect_name[0] = 0;
+	}
+
+	if (integerp(first(args))) {
+		connect_rssi = checkinteger(first(args));
+	} else {
+		connect_rssi = 0xFF;
+	}
+
+	start_scan();
+
+	/* Return conn ptr. TODO: return index into conn table */
+	return nil;
+}
+
+static void connected(struct bt_conn *conn, uint8_t conn_err)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	printk("Connection %p established: %s\n", conn, addr);
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	printk("Disconnected: %s (reason 0x%02x)\n", addr, reason);
+}
+
+BT_CONN_CB_DEFINE(conn_callbacks) = {
+	.connected = connected,
+	.disconnected = disconnected,
+};
 
 // Built-in symbol names
 const char string0[] PROGMEM = "nil";
@@ -7468,6 +7613,7 @@ const char string230[] PROGMEM = ":high";
 const char string231[] PROGMEM = ":low";
 const char string232[] PROGMEM = "bt-enable";
 const char string233[] PROGMEM = "bt-adv";
+const char string234[] PROGMEM = "bt-connect";
 
 // Documentation strings
 const char doc0[] PROGMEM = "nil\n"
@@ -8126,6 +8272,11 @@ const char doc229[] PROGMEM =
 	"Start/stop Bluetooth advertising\n"
 	"state: 1: start, 0: stop\n"
 	"name: full device name";
+const char doc230[] PROGMEM =
+	"(bt-connect [name] [rssi])\n"
+	"Automatically connect to a BLE peripheral\n"
+	"name: first device that has the same name\n"
+	"rssi: rssi limit in dB (e.g. -60)";
 
 // Built-in symbol lookup table
 const tbl_entry_t lookup_table[] PROGMEM = {
@@ -8363,6 +8514,7 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string231, (fn_ptr_type)LOW, DIGITALWRITE, NULL},
 	{string232, fn_bt_enable, 0200, NULL},
 	{string233, fn_bt_adv, 0212, doc229},
+	{string234, fn_bt_connect, 0202, doc230},
 };
 
 #if !defined(extensions)
