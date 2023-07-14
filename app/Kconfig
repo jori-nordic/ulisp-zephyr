@@ -1,0 +1,5 @@
+config UART_NATIVE_WAIT_PTS_READY_ENABLE
+	bool
+	default y if NATIVE_POSIX
+
+source "Kconfig.zephyr"
