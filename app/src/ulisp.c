@@ -26,6 +26,7 @@ const char LispLibrary[] PROGMEM = "";
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/bluetooth/bluetooth.h>
 #include <strings.h>		/* for strcasecmp */
 
 #define UART_DEVICE_NODE DT_CHOSEN(zephyr_shell_uart)
@@ -7169,6 +7170,56 @@ object *fn_invertdisplay(object *args, object *env)
 	return nil;
 }
 
+object *fn_bt_enable(object *args, object *env)
+{
+	(void)env;
+	(void)args;
+	int err;
+
+	err = bt_enable(NULL);
+
+	if (err) {
+		printk("Failed to enable Bluetooth\n");
+
+		return number(err);
+	}
+
+	return number(err);
+}
+
+const struct bt_data ad_flags = BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR));
+object *fn_bt_adv(object *args, object *env)
+{
+	(void)env;
+	int err;
+	int nargs = listlength(args);
+
+	/* accepts either no args or a device name */
+	if (nargs > 0) {
+		/* use first arg as a device name */
+		struct bt_data ad[2];
+		char name[30] = {};
+		cstring(first(args), name, 30);
+
+		ad[0] = ad_flags;
+		ad[1].type = BT_DATA_NAME_COMPLETE;
+		ad[1].data_len = strlen(name);
+		ad[1].data = name;
+
+		err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), NULL, 0);
+	} else {
+		err = bt_le_adv_start(BT_LE_ADV_CONN, NULL, 0, NULL, 0);
+	}
+
+	if (err) {
+		printk("Failed to start advertising\n");
+
+		return number(err);
+	}
+
+	return number(err);
+}
+
 // Built-in symbol names
 const char string0[] PROGMEM = "nil";
 const char string1[] PROGMEM = "t";
@@ -7402,6 +7453,8 @@ const char string228[] PROGMEM = "invert-display";
 const char string229[] PROGMEM = ":led-builtin";
 const char string230[] PROGMEM = ":high";
 const char string231[] PROGMEM = ":low";
+const char string232[] PROGMEM = "bt-enable";
+const char string233[] PROGMEM = "bt-adv";
 #if defined(CPU_NRF52840)
 const char string232[] PROGMEM = ":input";
 const char string233[] PROGMEM = ":input-pullup";
@@ -8082,6 +8135,9 @@ const char doc227[] PROGMEM =
 	"Sets the display orientation for subsequent graphics commands; values are 0, 1, 2, or 3.";
 const char doc228[] PROGMEM = "(invert-display boolean)\n"
 			      "Mirror-images the display.";
+const char doc229[] PROGMEM = "(bt-adv [name])\n"
+			      "Starts Bluetooth advertising, optionally with [name] as full device name";
+
 
 // Built-in symbol lookup table
 const tbl_entry_t lookup_table[] PROGMEM = {
@@ -8317,6 +8373,8 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string229, (fn_ptr_type)LED_BUILTIN, 0, NULL},
 	{string230, (fn_ptr_type)HIGH, DIGITALWRITE, NULL},
 	{string231, (fn_ptr_type)LOW, DIGITALWRITE, NULL},
+	{string232, fn_bt_enable, 0200, NULL},
+	{string233, fn_bt_adv, 0201, doc229},
 #if defined(CPU_NRF52840)
 	{string232, (fn_ptr_type)INPUT, PINMODE, NULL},
 	{string233, (fn_ptr_type)INPUT_PULLUP, PINMODE, NULL},
