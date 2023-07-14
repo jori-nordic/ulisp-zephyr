@@ -7194,12 +7194,25 @@ object *fn_bt_adv(object *args, object *env)
 	int err;
 	int nargs = listlength(args);
 
+	checkargs(args);
+
+	bool start = checkinteger(first(args));
+
+	if (!start) {
+		err = bt_le_adv_stop();
+		if (err) {
+			printk("Failed to start advertising\n");
+		}
+
+		return number(err);
+	}
+
 	/* accepts either no args or a device name */
-	if (nargs > 0) {
+	if (nargs > 1) {
 		/* use first arg as a device name */
 		struct bt_data ad[2];
 		char name[30] = {};
-		cstring(first(args), name, 30);
+		cstring(second(args), name, 30);
 
 		ad[0] = ad_flags;
 		ad[1].type = BT_DATA_NAME_COMPLETE;
@@ -8108,9 +8121,11 @@ const char doc227[] PROGMEM =
 	"Sets the display orientation for subsequent graphics commands; values are 0, 1, 2, or 3.";
 const char doc228[] PROGMEM = "(invert-display boolean)\n"
 			      "Mirror-images the display.";
-const char doc229[] PROGMEM = "(bt-adv [name])\n"
-			      "Starts Bluetooth advertising, optionally with [name] as full device name";
-
+const char doc229[] PROGMEM =
+	"(bt-adv state [name])\n"
+	"Start/stop Bluetooth advertising\n"
+	"state: 1: start, 0: stop\n"
+	"name: full device name";
 
 // Built-in symbol lookup table
 const tbl_entry_t lookup_table[] PROGMEM = {
@@ -8347,7 +8362,7 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string230, (fn_ptr_type)HIGH, DIGITALWRITE, NULL},
 	{string231, (fn_ptr_type)LOW, DIGITALWRITE, NULL},
 	{string232, fn_bt_enable, 0200, NULL},
-	{string233, fn_bt_adv, 0201, doc229},
+	{string233, fn_bt_adv, 0212, doc229},
 };
 
 #if !defined(extensions)
