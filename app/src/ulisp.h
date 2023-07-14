@@ -2010,7 +2010,7 @@ uint32_t bitRead(uint32_t value, uint32_t index);
 
 static inline uint32_t arduinoRandom(uint32_t max)
 {
-	return MAX(random(), max);
+	return MAX(rand(), max);
 }
 
 void pinMode(uint32_t pin, uint32_t mode);
