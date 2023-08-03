@@ -7173,6 +7173,8 @@ object *fn_invertdisplay(object *args, object *env)
 
 /* Bluetooth module */
 
+object *ble_conns = NULL;
+
 object *fn_bt_enable(object *args, object *env)
 {
 	(void)env;
@@ -7183,9 +7185,13 @@ object *fn_bt_enable(object *args, object *env)
 
 	if (err) {
 		printk("Failed to enable Bluetooth\n");
-
-		return number(err);
 	}
+
+	/* FIXME: this doesn't work for some reason, barfs a soup of nils when printed */
+	ble_conns = cons(number(0), NULL);
+
+	/* object *con = cons(number(0), nil); */
+	/* ble_conns = cons(ble_conns, con); */
 
 	return number(err);
 }
@@ -7236,9 +7242,12 @@ object *fn_bt_adv(object *args, object *env)
 	return number(err);
 }
 
+/* TODO: pass this through the lisp conn object */
 int connect_rssi = 0xFF;
 char connect_name[50] = {0};
-struct bt_conn *default_conn;
+struct bt_conn *connecting;
+object *conn_obj;
+bool bt_connecting = false;
 
 static void connect_to_device(const bt_addr_le_t *addr)
 {
@@ -7253,7 +7262,7 @@ static void connect_to_device(const bt_addr_le_t *addr)
 	}
 
 	err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN,
-				BT_LE_CONN_PARAM_DEFAULT, &default_conn);
+				BT_LE_CONN_PARAM_DEFAULT, &connecting);
 	if (err) {
 		printk("Create conn failed (err %d)\n", err);
 		return;
@@ -7308,7 +7317,7 @@ static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 	}
 }
 
-static void start_scan(void)
+static int start_scan(void)
 {
 	int err;
 
@@ -7324,18 +7333,50 @@ static void start_scan(void)
 	err = bt_le_scan_start(&scan_param, device_found);
 	if (err) {
 		printk("Scanning failed to start (err %d)\n", err);
+	} else {
+		printk("Scanning successfully started\n");
+	}
+
+	return err;
+}
+
+object *fn_bt_conns(object *args, object *env)
+{
+	(void)env;
+
+	return ble_conns;
+}
+
+static void conn_cancel(void)
+{
+	int err = bt_le_scan_stop();
+	if (err) {
+		printk("Scanning failed to stop (err %d)\n", err);
 		return;
 	}
 
-	printk("Scanning successfully started\n");
+	bt_connecting = false;
 }
 
 /* conns go into a table: id, ptr */
 object *fn_bt_connect(object *args, object *env)
 {
+	int err;
 	(void)env;
 
 	checkargs(args);
+
+	if (listp(first(args)) && car(args) == nil) {
+		if (bt_connecting) {
+			printk("Stopping current connection request");
+			conn_cancel();
+		}
+	}
+
+	if (bt_connecting) {
+		printk("Overriding existing connect request");
+		return nil;
+	}
 
 	if (stringp(first(args))) {
 		cstring(first(args), connect_name, 50);
@@ -7351,10 +7392,25 @@ object *fn_bt_connect(object *args, object *env)
 		connect_rssi = 0xFF;
 	}
 
-	start_scan();
+	bt_connecting = true;
 
-	/* Return conn ptr. TODO: return index into conn table */
+	err = start_scan();
+	if (err) {
+		conn_cancel();
+	}
+
 	return nil;
+}
+
+static void update_conn(object *o, struct bt_conn *conn, char *state)
+{
+	object *con = cons(number(0), nil);
+	/* push(number((uint32_t)conn), con); */
+	/* push(lispstring(state), con); */
+
+	push(con, ble_conns);
+
+	printk("update-conn\n");
 }
 
 static void connected(struct bt_conn *conn, uint8_t conn_err)
@@ -7363,6 +7419,12 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 	printk("Connection %p established: %s\n", conn, addr);
+
+	/* change state of conn-obj to connected, update ptr */
+	update_conn(conn_obj, conn, "connected");
+
+	/* add conn-obj to connection list */
+	bt_connecting = false;
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
@@ -7614,6 +7676,7 @@ const char string231[] PROGMEM = ":low";
 const char string232[] PROGMEM = "bt-enable";
 const char string233[] PROGMEM = "bt-adv";
 const char string234[] PROGMEM = "bt-connect";
+const char string235[] PROGMEM = "conns";
 
 // Documentation strings
 const char doc0[] PROGMEM = "nil\n"
@@ -8276,7 +8339,11 @@ const char doc230[] PROGMEM =
 	"(bt-connect [name] [rssi])\n"
 	"Automatically connect to a BLE peripheral\n"
 	"name: first device that has the same name\n"
-	"rssi: rssi limit in dB (e.g. -60)";
+	"rssi: rssi limit in dB (e.g. -60)\n\n"
+	"To cancel a current connection attempt: (bt-connect nil)";
+const char doc231[] PROGMEM = "ble_conns\n"
+	"List of active bluetooth LE connections. "
+	"Format (conn-id conn-ptr state)";
 
 // Built-in symbol lookup table
 const tbl_entry_t lookup_table[] PROGMEM = {
@@ -8515,6 +8582,7 @@ const tbl_entry_t lookup_table[] PROGMEM = {
 	{string232, fn_bt_enable, 0200, NULL},
 	{string233, fn_bt_adv, 0212, doc229},
 	{string234, fn_bt_connect, 0202, doc230},
+	{string235, fn_bt_conns, 0200, doc231},
 };
 
 #if !defined(extensions)
